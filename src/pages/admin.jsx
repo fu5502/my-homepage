@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import yaml from "js-yaml";
 import {
   BiArrowBack, BiBook, BiCheckCircle, BiCog, BiChevronDown, BiChevronRight,
-  BiErrorCircle, BiGlobe, BiPencil, BiPlus, BiServer, BiSliders, BiTrash,
+  BiErrorCircle, BiGlobe, BiPencil, BiPlus, BiServer, BiSlider, BiTrash,
 } from "react-icons/bi";
 
 // 仓库地址固定显示在页脚（首页 + 后台），与首页保持一致
@@ -1413,7 +1413,7 @@ export default function Admin() {
                 : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             }`}
           >
-            <BiSliders /> 全局设置
+            <BiSlider /> 全局设置
           </button>
         </div>
 
