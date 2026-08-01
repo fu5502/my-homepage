@@ -2,11 +2,72 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import yaml from "js-yaml";
-import { BiArrowBack, BiCog, BiChevronDown, BiChevronRight, BiPencil, BiPlus, BiTrash } from "react-icons/bi";
+import {
+  BiArrowBack, BiBook, BiCheckCircle, BiCog, BiChevronDown, BiChevronRight,
+  BiErrorCircle, BiGlobe, BiPencil, BiPlus, BiServer, BiSliders, BiTrash,
+} from "react-icons/bi";
 
 // 仓库地址固定显示在页脚（首页 + 后台），与首页保持一致
 const GITHUB_REPO_URL = "https://github.com/fu5502/my-homepage";
 const Version = dynamic(() => import("components/version"), { ssr: false });
+
+// --------------------- 通用小组件 ---------------------
+
+// 友好的内联二次确认：先显示「删除」，点击后就地变成「确认 / 取消」，不再弹原生对话框
+function ConfirmButton({ label, hint = "确定要删除吗？", confirmText = "确认", onConfirm, className }) {
+  const [armed, setArmed] = useState(false);
+  useEffect(() => {
+    if (!armed) return undefined;
+    const t = setTimeout(() => setArmed(false), 4000);
+    return () => clearTimeout(t);
+  }, [armed]);
+  if (!armed) {
+    return (
+      <button type="button" className={className} onClick={() => setArmed(true)}>
+        {label}
+      </button>
+    );
+  }
+  return (
+    <span className="flex items-center gap-2 text-sm">
+      <span className="opacity-70">{hint}</span>
+      <button
+        type="button"
+        className="px-2 py-1 rounded bg-red-500 text-white hover:bg-red-600"
+        onClick={() => {
+          setArmed(false);
+          onConfirm();
+        }}
+      >
+        {confirmText}
+      </button>
+      <button type="button" className="opacity-60 hover:opacity-100" onClick={() => setArmed(false)}>
+        取消
+      </button>
+    </span>
+  );
+}
+
+// 分组输入：既能从已有分组里选，也能直接输入新分组名（后端会自动创建该分组）
+function GroupInput({ listId, value, groups, onChange, placeholder }) {
+  return (
+    <>
+      <input
+        list={listId}
+        className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        required
+      />
+      <datalist id={listId}>
+        {groups.map((g) => (
+          <option key={g.name} value={g.name} />
+        ))}
+      </datalist>
+    </>
+  );
+}
 
 // ----------------------------- 书签 标签 -----------------------------
 
@@ -23,7 +84,6 @@ function BookmarksPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [newGroup, setNewGroup] = useState("");
 
   const [expanded, setExpanded] = useState(() => new Set());
   const toggleGroup = (name) =>
@@ -91,7 +151,6 @@ function BookmarksPanel() {
   };
 
   const deleteLink = async (group, name) => {
-    if (!confirm(`确定删除链接 "${name}" ？`)) return;
     setError("");
     setNotice("");
     try {
@@ -121,31 +180,7 @@ function BookmarksPanel() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const addGroupFn = async (e) => {
-    e.preventDefault();
-    setError("");
-    setNotice("");
-    if (!newGroup.trim()) return;
-    try {
-      const res = await fetch("/api/admin/groups", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newGroup.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "添加分类失败");
-      }
-      setGroups(await res.json());
-      setNotice(`已添加分类「${newGroup.trim()}」`);
-      setNewGroup("");
-    } catch (e) {
-      setError(e.message);
-    }
-  };
-
   const deleteGroupFn = async (name) => {
-    if (!confirm(`确定删除分类 "${name}" 及其下所有链接？`)) return;
     setError("");
     setNotice("");
     try {
@@ -164,8 +199,19 @@ function BookmarksPanel() {
 
   return (
     <div className="space-y-6">
-      {error && <p className="text-sm text-red-500">{error}</p>}
-      {notice && <p className="text-sm text-green-600 dark:text-green-400">{notice}</p>}
+      <p className="text-sm opacity-60">管理首页的快捷链接，按分类分组。点击分类标题可展开 / 收起，下方可新增或编辑链接。</p>
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-3 py-2 text-sm">
+          <BiErrorCircle className="shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+      {notice && (
+        <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-3 py-2 text-sm">
+          <BiCheckCircle className="shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
       <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
         <h2 className="font-semibold mb-3">
           {editing ? `编辑链接：${editing.group} / ${editing.name}` : "添加站点链接"}
@@ -173,19 +219,14 @@ function BookmarksPanel() {
         <form onSubmit={submitLink} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs mb-1">分类</label>
-            <select
-              className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+            <GroupInput
+              listId="bm-groups"
               value={form.group}
-              onChange={(e) => setForm({ ...form, group: e.target.value })}
-              required
-            >
-              <option value="">选择分类</option>
-              {groups.map((g) => (
-                <option key={g.name} value={g.name}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+              groups={groups}
+              onChange={(v) => setForm({ ...form, group: v })}
+              placeholder="选择或输入新分类，如 开发工具"
+            />
+            <p className="text-[11px] opacity-50 mt-1">直接输入新分类名即可自动创建。</p>
           </div>
           {LINK_FIELDS.map((f) => (
             <div key={f.key}>
@@ -219,21 +260,7 @@ function BookmarksPanel() {
         </form>
       </div>
 
-      <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
-        <h2 className="font-semibold mb-3">添加分类</h2>
-        <form onSubmit={addGroupFn} className="flex gap-2">
-          <input
-            className="flex-1 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
-            value={newGroup}
-            placeholder="分类名称，如 开发工具"
-            onChange={(e) => setNewGroup(e.target.value)}
-            required
-          />
-          <button type="submit" className="px-4 py-2 rounded bg-theme-500 text-white hover:bg-theme-600">
-            添加分类
-          </button>
-        </form>
-      </div>
+      <p className="text-xs opacity-50">提示：在上方「分类」里直接输入一个不存在的名称，就会自动新建该分类。</p>
 
       {loading ? (
         <p className="text-sm opacity-60">加载中…</p>
@@ -260,12 +287,12 @@ function BookmarksPanel() {
                     <span>{g.name}</span>
                     <span className="text-xs opacity-50 font-normal">({g.bookmarks.length})</span>
                   </button>
-                  <button
-                    onClick={() => deleteGroupFn(g.name)}
+                  <ConfirmButton
+                    label={<><BiTrash /> 删除分类</>}
+                    hint="删除该分类及全部链接？"
                     className="text-red-500 hover:underline text-sm flex items-center gap-1"
-                  >
-                    <BiTrash /> 删除分类
-                  </button>
+                    onConfirm={() => deleteGroupFn(g.name)}
+                  />
                 </div>
                 {open && (
                   <ul className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -275,19 +302,19 @@ function BookmarksPanel() {
                           <div className="font-medium truncate">{bm.name}</div>
                           <div className="text-xs opacity-60 truncate">{bm.href}</div>
                         </div>
-                        <div className="flex gap-3 shrink-0">
+                        <div className="flex gap-3 shrink-0 items-center">
                           <button
                             onClick={() => editLink(g.name, bm)}
                             className="text-theme-600 dark:text-theme-400 hover:underline text-sm flex items-center gap-1"
                           >
                             <BiPencil /> 编辑
                           </button>
-                          <button
-                            onClick={() => deleteLink(g.name, bm.name)}
+                          <ConfirmButton
+                            label={<><BiTrash /> 删除</>}
+                            hint="删除该链接？"
                             className="text-red-500 hover:underline text-sm flex items-center gap-1"
-                          >
-                            <BiTrash /> 删除
-                          </button>
+                            onConfirm={() => deleteLink(g.name, bm.name)}
+                          />
                         </div>
                       </li>
                     ))}
@@ -324,7 +351,6 @@ function ServicesPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
-  const [newGroup, setNewGroup] = useState("");
 
   const [expanded, setExpanded] = useState(() => new Set());
   const toggleGroup = (name) =>
@@ -416,7 +442,6 @@ function ServicesPanel() {
   };
 
   const deleteService = async (group, name) => {
-    if (!confirm(`确定删除服务 "${name}" ？`)) return;
     setError("");
     setNotice("");
     try {
@@ -452,31 +477,7 @@ function ServicesPanel() {
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const addGroupFn = async (e) => {
-    e.preventDefault();
-    setError("");
-    setNotice("");
-    if (!newGroup.trim()) return;
-    try {
-      const res = await fetch("/api/admin/service-groups", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: newGroup.trim() }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "添加分组失败");
-      }
-      setGroups(await res.json());
-      setNotice(`已添加分组「${newGroup.trim()}」`);
-      setNewGroup("");
-    } catch (e) {
-      setError(e.message);
-    }
-  };
-
   const deleteGroupFn = async (name) => {
-    if (!confirm(`确定删除分组 "${name}" 及其下所有服务？`)) return;
     setError("");
     setNotice("");
     try {
@@ -495,8 +496,19 @@ function ServicesPanel() {
 
   return (
     <div className="space-y-6">
-      {error && <p className="text-sm text-red-500">{error}</p>}
-      {notice && <p className="text-sm text-green-600 dark:text-green-400">{notice}</p>}
+      <p className="text-sm opacity-60">管理首页的服务卡片与监控组件，按分组归类。点击分组标题展开 / 收起，下方可新增或编辑服务。</p>
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-3 py-2 text-sm">
+          <BiErrorCircle className="shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+      {notice && (
+        <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-3 py-2 text-sm">
+          <BiCheckCircle className="shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
       <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
         <h2 className="font-semibold mb-3">
           {editing ? `编辑服务：${editing.group} / ${editing.name}` : "添加服务"}
@@ -504,19 +516,14 @@ function ServicesPanel() {
         <form onSubmit={submitService} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <div>
             <label className="block text-xs mb-1">分组</label>
-            <select
-              className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+            <GroupInput
+              listId="svc-groups"
               value={form.group}
-              onChange={(e) => setForm({ ...form, group: e.target.value })}
-              required
-            >
-              <option value="">选择分组</option>
-              {groups.map((g) => (
-                <option key={g.name} value={g.name}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
+              groups={groups}
+              onChange={(v) => setForm({ ...form, group: v })}
+              placeholder="选择或输入新分组，如 服务器监控"
+            />
+            <p className="text-[11px] opacity-50 mt-1">直接输入新分组名即可自动创建。</p>
           </div>
           {SERVICE_FIELDS.map((f) => (
             <div key={f.key}>
@@ -585,21 +592,7 @@ function ServicesPanel() {
         </form>
       </div>
 
-      <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
-        <h2 className="font-semibold mb-3">添加分组</h2>
-        <form onSubmit={addGroupFn} className="flex gap-2">
-          <input
-            className="flex-1 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
-            value={newGroup}
-            placeholder="分组名称，如 服务器监控"
-            onChange={(e) => setNewGroup(e.target.value)}
-            required
-          />
-          <button type="submit" className="px-4 py-2 rounded bg-theme-500 text-white hover:bg-theme-600">
-            添加分组
-          </button>
-        </form>
-      </div>
+      <p className="text-xs opacity-50">提示：在上方「分组」里直接输入一个不存在的名称，就会自动新建该分组。</p>
 
       {loading ? (
         <p className="text-sm opacity-60">加载中…</p>
@@ -626,12 +619,12 @@ function ServicesPanel() {
                     <span>{g.name}</span>
                     <span className="text-xs opacity-50 font-normal">({g.services.length})</span>
                   </button>
-                  <button
-                    onClick={() => deleteGroupFn(g.name)}
+                  <ConfirmButton
+                    label={<><BiTrash /> 删除分组</>}
+                    hint="删除该分组及全部服务？"
                     className="text-red-500 hover:underline text-sm flex items-center gap-1"
-                  >
-                    <BiTrash /> 删除分组
-                  </button>
+                    onConfirm={() => deleteGroupFn(g.name)}
+                  />
                 </div>
                 {open && (
                   <ul className="divide-y divide-gray-100 dark:divide-gray-700">
@@ -644,19 +637,19 @@ function ServicesPanel() {
                             <div className="text-[10px] opacity-50 truncate">widget: {svc.widget.type}</div>
                           )}
                         </div>
-                        <div className="flex gap-3 shrink-0">
+                        <div className="flex gap-3 shrink-0 items-center">
                           <button
                             onClick={() => editService(g.name, svc)}
                             className="text-theme-600 dark:text-theme-400 hover:underline text-sm flex items-center gap-1"
                           >
                             <BiPencil /> 编辑
                           </button>
-                          <button
-                            onClick={() => deleteService(g.name, svc.name)}
+                          <ConfirmButton
+                            label={<><BiTrash /> 删除</>}
+                            hint="删除该服务？"
                             className="text-red-500 hover:underline text-sm flex items-center gap-1"
-                          >
-                            <BiTrash /> 删除
-                          </button>
+                            onConfirm={() => deleteService(g.name, svc.name)}
+                          />
                         </div>
                       </li>
                     ))}
@@ -729,6 +722,7 @@ function SitePanel() {
 
   return (
     <div className="space-y-6">
+      <p className="text-sm opacity-60">这段信息会显示在首页页脚，目前只开放「版权信息」一项（GitHub 仓库地址固定展示，不可修改）。</p>
       <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
         <h2 className="font-semibold mb-3">站点信息（页脚展示）</h2>
         <form onSubmit={save} className="space-y-4">
@@ -743,7 +737,12 @@ function SitePanel() {
             />
             <p className="text-[11px] opacity-50 mt-1">支持纯文本，会显示在首页页脚左侧。</p>
           </div>
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {error && (
+            <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-3 py-2 text-sm">
+              <BiErrorCircle className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <button type="submit" disabled={saving} className="px-4 py-2 rounded bg-theme-500 text-white hover:bg-theme-600 disabled:opacity-50">
               {saving ? "保存中…" : "保存"}
@@ -1054,6 +1053,7 @@ function SettingsPanel() {
 
   return (
     <form onSubmit={save} className="space-y-6">
+      <p className="text-sm opacity-60">管理首页的全局外观：标题、语言、主题、背景、布局与分组顺序等。保存会写回 config/settings.yaml（原文件 YAML 注释会丢失，配置本身不受影响）。</p>
       <div className={card}>
         <h2 className="font-semibold mb-3">基础设置</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1319,8 +1319,18 @@ function SettingsPanel() {
         </p>
       </details>
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
-      {notice && <p className="text-sm text-green-600 dark:text-green-400">{notice}</p>}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-3 py-2 text-sm">
+          <BiErrorCircle className="shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+      {notice && (
+        <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-3 py-2 text-sm">
+          <BiCheckCircle className="shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <button
@@ -1350,7 +1360,7 @@ function SettingsPanel() {
 // ----------------------------- 外壳 / 标签切换 -----------------------------
 
 export default function Admin() {
-  const [tab, setTab] = useState("site");
+  const [tab, setTab] = useState("bookmarks");
 
   return (
     <div className="min-h-screen p-6 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -1364,46 +1374,46 @@ export default function Admin() {
           </Link>
         </div>
 
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 flex-wrap">
           <button
             onClick={() => setTab("bookmarks")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1 ${
               tab === "bookmarks"
                 ? "bg-theme-500 text-white"
                 : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             }`}
           >
-            书签 / 链接
+            <BiBook /> 书签 / 链接
           </button>
           <button
             onClick={() => setTab("services")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1 ${
               tab === "services"
                 ? "bg-theme-500 text-white"
                 : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             }`}
           >
-            服务 / 分组
+            <BiServer /> 服务 / 分组
           </button>
           <button
             onClick={() => setTab("site")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1 ${
               tab === "site"
                 ? "bg-theme-500 text-white"
                 : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             }`}
           >
-            站点信息
+            <BiGlobe /> 站点信息
           </button>
           <button
             onClick={() => setTab("settings")}
-            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+            className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1 ${
               tab === "settings"
                 ? "bg-theme-500 text-white"
                 : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             }`}
           >
-            全局设置
+            <BiSliders /> 全局设置
           </button>
         </div>
 
