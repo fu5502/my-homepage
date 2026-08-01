@@ -601,10 +601,105 @@ function ServicesPanel() {
   );
 }
 
+// ----------------------------- 站点信息 标签 -----------------------------
+
+function SitePanel() {
+  const [copyright, setCopyright] = useState("");
+  const [github, setGithub] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [savedAt, setSavedAt] = useState("");
+
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        const res = await fetch("/api/admin/site");
+        if (!res.ok) throw new Error("加载失败");
+        const data = await res.json();
+        setCopyright(data.copyright || "");
+        setGithub(data.github || "");
+        setError("");
+      } catch (e) {
+        setError(e.message);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  const save = async (e) => {
+    e.preventDefault();
+    setError("");
+    setSaving(true);
+    try {
+      const res = await fetch("/api/admin/site", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ copyright, github: github.trim() }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "保存失败");
+      }
+      await res.json();
+      setSavedAt(new Date().toLocaleString());
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <p className="text-sm opacity-60">加载中…</p>;
+
+  return (
+    <div className="space-y-6">
+      <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
+        <h2 className="font-semibold mb-3">站点信息（页脚展示）</h2>
+        <form onSubmit={save} className="space-y-4">
+          <div>
+            <label className="block text-xs mb-1">版权信息</label>
+            <textarea
+              className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+              rows={3}
+              value={copyright}
+              placeholder="© 2026 fugang. 保留所有权利。"
+              onChange={(e) => setCopyright(e.target.value)}
+            />
+            <p className="text-[11px] opacity-50 mt-1">支持纯文本，会显示在首页页脚左侧。</p>
+          </div>
+          <div>
+            <label className="block text-xs mb-1">GitHub 地址</label>
+            <input
+              className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+              value={github}
+              placeholder="https://github.com/fu5502/my-homepage"
+              onChange={(e) => setGithub(e.target.value)}
+            />
+            <p className="text-[11px] opacity-50 mt-1">填写后，首页页脚会显示一个 GitHub 链接图标。</p>
+          </div>
+          {error && <p className="text-sm text-red-500">{error}</p>}
+          <div className="flex items-center gap-3">
+            <button type="submit" disabled={saving} className="px-4 py-2 rounded bg-theme-500 text-white hover:bg-theme-600 disabled:opacity-50">
+              {saving ? "保存中…" : "保存"}
+            </button>
+            {savedAt && <span className="text-xs opacity-60">已于 {savedAt} 保存</span>}
+          </div>
+        </form>
+      </div>
+      <p className="mt-2 text-xs opacity-50 flex items-center gap-1">
+        <BiPlus /> 改动会写回 config/site.yaml，返回首页即可在页脚看到更新。
+      </p>
+    </div>
+  );
+}
+
 // ----------------------------- 外壳 / 标签切换 -----------------------------
 
 export default function Admin() {
-  const [tab, setTab] = useState("bookmarks");
+  const [tab, setTab] = useState("site");
 
   return (
     <div className="min-h-screen p-6 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
@@ -639,9 +734,25 @@ export default function Admin() {
           >
             服务 / 分组
           </button>
+          <button
+            onClick={() => setTab("site")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              tab === "site"
+                ? "bg-theme-500 text-white"
+                : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+            }`}
+          >
+            站点信息
+          </button>
         </div>
 
-        {tab === "bookmarks" ? <BookmarksPanel /> : <ServicesPanel />}
+        {tab === "bookmarks" ? (
+          <BookmarksPanel />
+        ) : tab === "services" ? (
+          <ServicesPanel />
+        ) : (
+          <SitePanel />
+        )}
       </div>
     </div>
   );

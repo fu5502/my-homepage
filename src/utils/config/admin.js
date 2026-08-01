@@ -283,3 +283,59 @@ export async function deleteServiceGroup(name) {
   await writeServicesModel(cleaned);
   return cleaned;
 }
+
+// ---------------------------------------------------------------------------
+// Site info (config/site.yaml) — global site-level settings rendered in the
+// homepage footer: `copyright` (free text) and `github` (repository URL).
+// Stored as a flat key/value document (not the grouped list format above).
+// ---------------------------------------------------------------------------
+
+const SITE_FILE = "site.yaml";
+
+function sitePath() {
+  return path.join(CONF_DIR, SITE_FILE);
+}
+
+function normalizeSite(parsed) {
+  return {
+    copyright: typeof parsed?.copyright === "string" ? parsed.copyright : "",
+    github: typeof parsed?.github === "string" ? parsed.github : "",
+  };
+}
+
+export async function readSiteModel() {
+  const file = sitePath();
+  let raw;
+  try {
+    raw = await fs.readFile(file, "utf8");
+  } catch (e) {
+    return { copyright: "", github: "" };
+  }
+
+  let parsed;
+  try {
+    parsed = yaml.load(raw);
+  } catch (e) {
+    return { copyright: "", github: "" };
+  }
+  if (!parsed || typeof parsed !== "object") return { copyright: "", github: "" };
+  return normalizeSite(parsed);
+}
+
+export async function writeSiteModel({ copyright, github }) {
+  const file = sitePath();
+
+  try {
+    const prev = await fs.readFile(file, "utf8");
+    await fs.writeFile(`${file}.bak`, prev, "utf8");
+  } catch (e) {
+    // no previous file yet
+  }
+
+  const data = normalizeSite({ copyright: copyright || "", github: github || "" });
+  const yamlStr = yaml.dump(data, { lineWidth: -1, noRefs: true, sortKeys: false });
+  const tmp = `${file}.tmp`;
+  await fs.writeFile(tmp, `---\n${yamlStr}`, "utf8");
+  await fs.rename(tmp, file);
+  return data;
+}
