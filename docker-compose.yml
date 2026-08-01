@@ -32,3 +32,5 @@ services:
       - PGID=1000
       # 容器监听地址（FnOS 网络环境下 0.0.0.0 更稳妥）
       - HOSTNAME=0.0.0.0
+      # homepage 的 Host 校验白名单：允许通过该地址访问（改成你的 NAS IP/域名）
+      - HOMEPAGE_ALLOWED_HOSTS=192.168.99.147:3000,localhost:3000
