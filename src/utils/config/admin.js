@@ -284,6 +284,29 @@ export async function deleteServiceGroup(name) {
   return cleaned;
 }
 
+// Reorder the services inside one group. `order` is the full list of service
+// names in their new order; any service omitted from `order` is appended at
+// the end so a partial payload never drops data.
+export async function reorderServices({ group, order }) {
+  if (!group || !Array.isArray(order)) {
+    throw new Error("group and order[] are required");
+  }
+  const model = await readServicesModel();
+  const g = model.find((x) => x.name === group);
+  if (!g) throw new Error(`Group "${group}" not found`);
+
+  const byName = new Map(g.services.map((s) => [s.name, s]));
+  const next = order
+    .map((name) => byName.get(name))
+    .filter((s) => s !== undefined);
+  g.services.forEach((s) => {
+    if (!order.includes(s.name)) next.push(s);
+  });
+  g.services = next;
+  await writeServicesModel(model);
+  return model;
+}
+
 // ---------------------------------------------------------------------------
 // Site info (config/site.yaml) — global site-level settings rendered in the
 // homepage footer: `copyright` (free text) and `github` (repository URL).

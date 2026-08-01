@@ -2,6 +2,7 @@ import {
   addService,
   deleteService,
   readServicesModel,
+  reorderServices,
   updateService,
 } from "utils/config/admin";
 
@@ -66,6 +67,14 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "group and name are required" });
       }
       return res.status(200).json(await deleteService({ group, name }));
+    }
+
+    if (req.method === "PATCH") {
+      const { group, order } = req.body || {};
+      if (!group || !Array.isArray(order)) {
+        return res.status(400).json({ error: "group and order[] are required" });
+      }
+      return res.status(200).json(await reorderServices({ group, order }));
     }
 
     return res.status(405).json({ error: "Method not allowed" });

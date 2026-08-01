@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import yaml from "js-yaml";
 import {
   BiArrowBack, BiBook, BiCheckCircle, BiCog, BiChevronDown, BiChevronRight,
-  BiErrorCircle, BiGlobe, BiLogOut, BiPencil, BiPlus, BiServer, BiSlider, BiTrash,
+  BiErrorCircle, BiGlobe, BiLogOut, BiMoveVertical, BiPencil, BiPlus, BiServer, BiSlider, BiTrash,
 } from "react-icons/bi";
 import { signOut } from "next-auth/react";
 
@@ -363,6 +363,64 @@ function ServicesPanel() {
       return next;
     });
 
+  // 拖放排序状态：dragGroup 记录正在拖动的分组，dragIndex 记录源索引
+  const [dragGroup, setDragGroup] = useState(null);
+  const [dragIndex, setDragIndex] = useState(null);
+
+  const onDragStart = (e, groupName, index) => {
+    setDragGroup(groupName);
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  };
+  const onDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  const onDrop = (e, groupName, dropIndex) => {
+    e.preventDefault();
+    const from = Number(e.dataTransfer.getData("text/plain"));
+    if (dragGroup !== groupName || Number.isNaN(from) || from === dropIndex) {
+      setDragGroup(null);
+      setDragIndex(null);
+      return;
+    }
+    reorderWithin(groupName, from, dropIndex);
+    setDragGroup(null);
+    setDragIndex(null);
+  };
+
+  const reorderWithin = (groupName, from, to) => {
+    const group = groups.find((g) => g.name === groupName);
+    if (!group) return;
+    const arr = [...group.services];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    setGroups((prev) => prev.map((g) => (g.name === groupName ? { ...g, services: arr } : g)));
+    saveServiceOrder(groupName, arr.map((s) => s.name));
+  };
+
+  const saveServiceOrder = async (groupName, order) => {
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch("/api/admin/services", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group: groupName, order }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "排序保存失败");
+      }
+      setGroups(await res.json());
+      setNotice(`已保存「${groupName}」的服务顺序`);
+    } catch (e) {
+      setError(e.message);
+      load();
+    }
+  };
+
   const [form, setForm] = useState(emptyServiceForm());
   const [editing, setEditing] = useState(null);
   const [widgetText, setWidgetText] = useState("");
@@ -498,7 +556,7 @@ function ServicesPanel() {
 
   return (
     <div className="space-y-6">
-      <p className="text-sm opacity-60">管理首页的服务卡片与监控组件，按分组归类。点击分组标题展开 / 收起，下方可新增或编辑服务。</p>
+      <p className="text-sm opacity-60">管理首页的服务卡片与监控组件，按分组归类。点击分组标题展开 / 收起；展开后拖动服务左侧手柄即可调整顺序，改动即时保存。</p>
       {error && (
         <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-3 py-2 text-sm">
           <BiErrorCircle className="shrink-0" />
@@ -630,14 +688,29 @@ function ServicesPanel() {
                 </div>
                 {open && (
                   <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {g.services.map((svc) => (
-                      <li key={svc.name} className="py-2 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-medium truncate">{svc.name}</div>
-                          <div className="text-xs opacity-60 truncate">{svc.href}</div>
-                          {svc.widget?.type && (
-                            <div className="text-[10px] opacity-50 truncate">widget: {svc.widget.type}</div>
-                          )}
+                    {g.services.map((svc, i) => (
+                      <li
+                        key={svc.name}
+                        draggable
+                        onDragStart={(e) => onDragStart(e, g.name, i)}
+                        onDragOver={onDragOver}
+                        onDrop={(e) => onDrop(e, g.name, i)}
+                        className={`py-2 flex items-center justify-between gap-2 ${
+                          dragGroup === g.name && dragIndex === i ? "opacity-40" : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <BiMoveVertical
+                            className="text-gray-400 dark:text-gray-500 cursor-grab active:cursor-grabbing shrink-0"
+                            title="拖动调整顺序"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{svc.name}</div>
+                            <div className="text-xs opacity-60 truncate">{svc.href}</div>
+                            {svc.widget?.type && (
+                              <div className="text-[10px] opacity-50 truncate">widget: {svc.widget.type}</div>
+                            )}
+                          </div>
                         </div>
                         <div className="flex gap-3 shrink-0 items-center">
                           <button
