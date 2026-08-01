@@ -1,10 +1,12 @@
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import yaml from "js-yaml";
 import { BiArrowBack, BiCog, BiPencil, BiPlus, BiTrash } from "react-icons/bi";
 
-// 仓库地址固定显示在首页页脚版权处，不在后台提供修改入口
+// 仓库地址固定显示在页脚（首页 + 后台），与首页保持一致
 const GITHUB_REPO_URL = "https://github.com/fu5502/my-homepage";
+const Version = dynamic(() => import("components/version"), { ssr: false });
 
 // ----------------------------- 书签 标签 -----------------------------
 
@@ -632,7 +634,6 @@ function ServicesPanel() {
 
 function SitePanel() {
   const [copyright, setCopyright] = useState("");
-  const [github, setGithub] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -646,7 +647,6 @@ function SitePanel() {
         if (!res.ok) throw new Error("加载失败");
         const data = await res.json();
         setCopyright(data.copyright || "");
-        setGithub(GITHUB_REPO_URL);
         setError("");
       } catch (e) {
         setError(e.message);
@@ -664,7 +664,7 @@ function SitePanel() {
       const res = await fetch("/api/admin/site", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ copyright, github: github.trim() }),
+        body: JSON.stringify({ copyright }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -696,19 +696,6 @@ function SitePanel() {
               onChange={(e) => setCopyright(e.target.value)}
             />
             <p className="text-[11px] opacity-50 mt-1">支持纯文本，会显示在首页页脚左侧。</p>
-          </div>
-          <div>
-            <label className="block text-xs mb-1">GitHub 地址（固定显示在页脚版权处，不可修改）</label>
-            <input
-              className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 opacity-70 cursor-not-allowed"
-              value={github || GITHUB_REPO_URL}
-              readOnly
-              disabled
-              placeholder="https://github.com/fu5502/my-homepage"
-            />
-            <p className="text-[11px] opacity-50 mt-1">
-              GitHub 仓库地址固定在首页页脚版权处，后台不提供修改入口；如需更换请直接编辑 config/site.yaml。
-            </p>
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex items-center gap-3">
@@ -1378,6 +1365,28 @@ export default function Admin() {
         {tab === "services" && <ServicesPanel />}
         {tab === "site" && <SitePanel />}
         {tab === "settings" && <SettingsPanel />}
+
+        <div
+          id="admin-footer"
+          className="mt-12 pt-5 border-t border-gray-200 dark:border-gray-700 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs opacity-60"
+        >
+          <span className="min-w-0 truncate">后台管理 · 使用 gethomepage/homepage 二开</span>
+          <div className="flex items-center gap-4">
+            <Version />
+            <a
+              href={GITHUB_REPO_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              title="GitHub"
+              className="flex items-center gap-1 shrink-0 hover:opacity-100"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true">
+                <path d="M12 .5C5.73.5.5 5.73.5 12c0 5.08 3.29 9.39 7.86 10.91.58.11.79-.25.79-.56v-2c-3.2.7-3.88-1.54-3.88-1.54-.53-1.34-1.29-1.7-1.29-1.7-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.23-1.28-5.23-5.69 0-1.26.45-2.29 1.19-3.1-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.18 1.18a11.1 11.1 0 0 1 5.79 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.84 1.19 3.1 0 4.42-2.69 5.39-5.25 5.68.41.36.78 1.07.78 2.16v3.2c0 .31.21.68.8.56A11.51 11.51 0 0 0 23.5 12C23.5 5.73 18.27.5 12 .5z" />
+              </svg>
+              <span>GitHub</span>
+            </a>
+          </div>
+        </div>
       </div>
     </div>
   );
