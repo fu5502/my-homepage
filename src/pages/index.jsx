@@ -575,9 +575,6 @@ export default function Wrapper({ initialSettings, fallback }) {
   const { color } = useContext(ColorContext);
   let backgroundImage = "";
   let opacity = initialSettings?.backgroundOpacity ?? 0;
-  let backgroundBlur = false;
-  let backgroundSaturate = false;
-  let backgroundBrightness = false;
   let backdropFilter = "";
   if (initialSettings?.background) {
     const bg = initialSettings.background;
@@ -586,16 +583,14 @@ export default function Wrapper({ initialSettings, fallback }) {
       if (bg.opacity !== undefined) {
         opacity = 1 - bg.opacity / 100;
       }
-      // An inline backdrop-filter replaces the class-based one entirely, so it
-      // is all-or-nothing: only switch over when a class-less filter is used.
-      const needsInlineFilter =
-        bg.contrast !== undefined || bg.grayscale !== undefined || bg.hueRotate !== undefined;
-      if (needsInlineFilter) {
+      // Compose the whole filter chain inline so every slider (saturate,
+      // brightness, blur, contrast, grayscale, hueRotate) takes effect without
+      // relying on Tailwind dynamic utility classes, which v4 does not generate
+      // at runtime. A backdrop-filter is only applied when at least one filter
+      // field is configured (opacity is handled separately via the overlay).
+      const FILTER_KEYS = ["blur", "saturate", "brightness", "contrast", "grayscale", "hueRotate"];
+      if (FILTER_KEYS.some((k) => bg[k] !== undefined)) {
         backdropFilter = buildBackdropFilter(bg);
-      } else {
-        backgroundBlur = bg.blur !== undefined;
-        backgroundSaturate = bg.saturate !== undefined;
-        backgroundBrightness = bg.brightness !== undefined;
       }
     } else {
       backgroundImage = bg;
@@ -643,13 +638,7 @@ export default function Wrapper({ initialSettings, fallback }) {
           id="inner_wrapper"
           tabIndex="-1"
           style={backdropFilter ? { backdropFilter, WebkitBackdropFilter: backdropFilter } : undefined}
-          className={classNames(
-            "w-full h-full overflow-auto",
-            backgroundBlur &&
-              `backdrop-blur${initialSettings.background.blur?.length ? `-${initialSettings.background.blur}` : ""}`,
-            backgroundSaturate && `backdrop-saturate-${initialSettings.background.saturate}`,
-            backgroundBrightness && `backdrop-brightness-${initialSettings.background.brightness}`,
-          )}
+          className="w-full h-full overflow-auto"
         >
           <Index initialSettings={initialSettings} fallback={fallback} />
         </div>
