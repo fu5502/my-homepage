@@ -25,8 +25,16 @@ services:
     volumes:
       - ./config:/config
     environment:
-      # 开启登录鉴权，保护 /admin 与 api/admin/*（需在 config/settings.yaml 配置密码/OIDC）
+      # ===== 登录鉴权（密码方式）=====
+      # 注意：本版本 homepage 的密码登录走环境变量，而非 settings.yaml 的 auth.users。
+      # 必须同时具备下面 4 个变量，next-auth 才会注册出「密码」登录方式。
       - HOMEPAGE_AUTH_ENABLED=true
+      # 登录密码（单一全局密码，登录页只填密码、无需用户名）
+      - HOMEPAGE_AUTH_PASSWORD=fugang520123
+      # 鉴权会话密钥（随机串，改了会让已登录会话失效）
+      - HOMEPAGE_AUTH_SECRET=mcGCoKhUAYwUNtwGTguEx27yQkVV2DBahKovvNCfGwI
+      # 外部访问地址，next-auth 必填（换成你的 NAS IP/域名）
+      - HOMEPAGE_EXTERNAL_URL=http://192.168.99.147:3000
       # 飞牛首个用户通常 uid/gid=1000；如不确定可临时设 0 让容器以 root 运行
       - PUID=1000
       - PGID=1000

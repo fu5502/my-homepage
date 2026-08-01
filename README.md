@@ -38,19 +38,18 @@ docker compose up -d
 
 ### 开启登录（强烈建议）
 
-后台管理 `/admin` 默认被 `HOMEPAGE_AUTH_ENABLED` 保护，需要先在 `config/settings.yaml` 配置账号，否则任何人都能访问后台。
+后台管理 `/admin` 与 `api/admin/*` 默认被 `HOMEPAGE_AUTH_ENABLED` 保护。**注意：本版本 homepage 的密码登录走环境变量，而不是 `settings.yaml` 的 `auth.users`**，必须同时具备以下 4 个环境变量，next-auth 才会注册「密码」登录方式：
 
-`config/settings.yaml` 示例：
+| 变量 | 作用 |
+| --- | --- |
+| `HOMEPAGE_AUTH_ENABLED=true` | 开启鉴权 |
+| `HOMEPAGE_AUTH_PASSWORD` | 登录密码（单一全局密码，登录页只填密码、无需用户名） |
+| `HOMEPAGE_AUTH_SECRET` | 会话密钥（随机串，改了会让已登录会话失效） |
+| `HOMEPAGE_EXTERNAL_URL` | 外部访问地址，next-auth 必填，例如 `http://192.168.99.147:3000` |
 
-```yaml
----
-auth:
-  users:
-    - username: admin
-      password: "你的密码"
-```
+仓库内的 `docker-compose.yml` 已配好这 4 个变量（示例密码 `fugang520123`），直接 `docker compose up -d` 即可。若用 `docker run`，请自行补上这些 `-e`。
 
-更多鉴权方式（OIDC、Header 等）参见 [homepage 官方文档](https://gethomepage.dev/configs/settings/#auth)。
+OIDC / Header 等其他鉴权方式见 [homepage 官方文档](https://gethomepage.dev/configs/settings/#auth)。
 
 登录后，首页右下角会出现一个⚙️齿轮图标，点击进入 `/admin` 即可管理。
 
@@ -99,7 +98,11 @@ pnpm dev          # 开发模式，访问 http://localhost:3000
 ```bash
 docker build -t my-homepage:local .
 docker run -d -p 3000:3000 -v $(pwd)/config:/config \
-  -e HOMEPAGE_AUTH_ENABLED=true my-homepage:local
+  -e HOMEPAGE_AUTH_ENABLED=true \
+  -e HOMEPAGE_AUTH_PASSWORD=你的密码 \
+  -e HOMEPAGE_AUTH_SECRET=$(openssl rand -hex 32) \
+  -e HOMEPAGE_EXTERNAL_URL=http://你的IP:3000 \
+  my-homepage:local
 ```
 
 ---

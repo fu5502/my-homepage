@@ -38,19 +38,18 @@ Then visit `http://<device-IP>:3000`.
 
 ### Enable Auth (strongly recommended)
 
-The `/admin` backend is protected by `HOMEPAGE_AUTH_ENABLED`, but you must first configure credentials in `config/settings.yaml`, otherwise anyone can reach the admin UI.
+Both `/admin` and `api/admin/*` are protected by `HOMEPAGE_AUTH_ENABLED`. **Note: in this homepage version, password login is driven by environment variables, NOT the `auth.users` block in `settings.yaml`.** The following 4 variables must all be present for next-auth to register the "Password" provider:
 
-`config/settings.yaml` example:
+| Variable | Purpose |
+| --- | --- |
+| `HOMEPAGE_AUTH_ENABLED=true` | enable auth |
+| `HOMEPAGE_AUTH_PASSWORD` | login password (single global password — the sign-in page only asks for a password, no username) |
+| `HOMEPAGE_AUTH_SECRET` | session secret (random string; changing it invalidates existing sessions) |
+| `HOMEPAGE_EXTERNAL_URL` | public base URL, required by next-auth, e.g. `http://192.168.99.147:3000` |
 
-```yaml
----
-auth:
-  users:
-    - username: admin
-      password: "your-password"
-```
+The bundled `docker-compose.yml` already sets these 4 variables (sample password `fugang520123`), so `docker compose up -d` is enough. When using `docker run`, add the corresponding `-e` flags yourself.
 
-For more auth options (OIDC, header auth, etc.), see the [homepage docs](https://gethomepage.dev/configs/settings/#auth).
+For OIDC / header auth, see the [homepage docs](https://gethomepage.dev/configs/settings/#auth).
 
 After logging in, a ⚙️ gear icon appears at the bottom-right of the dashboard — click it to open `/admin`.
 
@@ -99,7 +98,11 @@ If you'd rather build the image yourself instead of using GHCR:
 ```bash
 docker build -t my-homepage:local .
 docker run -d -p 3000:3000 -v $(pwd)/config:/config \
-  -e HOMEPAGE_AUTH_ENABLED=true my-homepage:local
+  -e HOMEPAGE_AUTH_ENABLED=true \
+  -e HOMEPAGE_AUTH_PASSWORD=your-password \
+  -e HOMEPAGE_AUTH_SECRET=$(openssl rand -hex 32) \
+  -e HOMEPAGE_EXTERNAL_URL=http://your-ip:3000 \
+  my-homepage:local
 ```
 
 ---
