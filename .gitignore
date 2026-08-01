@@ -61,3 +61,6 @@ _yamltest.cjs
 
 # workbuddy workspace memory (not part of the app)
 .workbuddy/
+
+# SSH private keys (keep local only, never commit)
+deploy/ssh/fnos_admin_ed25519

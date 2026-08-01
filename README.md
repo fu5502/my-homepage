@@ -8,8 +8,8 @@
 
 ## ✨ 功能特性
 
-- **可视化后台 `/admin`**：在网页上直接管理站点链接（bookmarks）和分类（groups），支持新增、编辑、删除、跨分类移动。
-- **实时写回原生配置**：后台操作会直接写回 `config/bookmarks.yaml`（修改前自动备份为 `.bak`），与 homepage 原生格式完全兼容；返回首页 SWR 自动刷新即可看到变化。
+- **可视化后台 `/admin`**：在网页上直接管理站点链接（bookmarks）和分类（groups），以及**服务（services）和分组**（对应 `services.yaml`，含图标、跳转、健康检查、Docker 主机/容器、`widget` 监控组件与 `options` 列表），支持新增、编辑、删除、跨分组移动。
+- **实时写回原生配置**：后台操作会直接写回 `config/bookmarks.yaml` 或 `config/services.yaml`（修改前自动备份为 `.bak`），与 homepage 原生格式完全兼容；返回首页 SWR 自动刷新即可看到变化。`widget` / `options` 这类复杂结构在后台用原始 YAML 文本框编辑，零丢失。
 - **复用现有登录鉴权**：后台页面与 `api/admin/*` 接口自动受 homepage 的 `HOMEPAGE_AUTH_ENABLED`（密码 / OIDC）保护，无需另搞一套账号体系。
 - **Docker / NAS 友好**：官方 `Dockerfile`（Next.js standalone 输出）+ 一键 `docker-compose.yml`，配置目录通过挂载卷持久化，适合飞牛 NAS（FnOS）等环境。
 - **GHCR 自动构建**：推送代码后 GitHub Actions 自动构建多架构镜像并推送到 `ghcr.io/fu5502/my-homepage`，重装/多设备一键拉取。
@@ -57,20 +57,29 @@ OIDC / Header 等其他鉴权方式见 [homepage 官方文档](https://gethomepa
 
 ## 🖱️ 使用后台管理
 
-1. 访问 `http://<设备IP>:3000/admin`（需先登录）。
-2. **管理分类**：在「分类」区域新增 / 删除分组。
-3. **管理站点链接**：在「链接」区域填写名称、URL、图标、描述、所属分类；支持编辑、删除、跨分类移动。
-4. 每次保存都会实时写回 `config/bookmarks.yaml`，返回首页即可看到更新。
+后台 `/admin` 顶部有两个标签：
+
+- **书签 / 链接**：管理 `bookmarks.yaml` 的分类与站点链接（名称、URL、缩写、图标、描述）。
+- **服务 / 分组**：管理 `services.yaml` 的分组与服务。
+
+**管理服务步骤：**
+1. 访问 `http://<设备IP>:3000/admin`（需先登录），切到「服务 / 分组」标签。
+2. 先新增一个分组（如「服务器监控」），或直接往已有分组里加服务。
+3. 填写服务公共字段：名称、跳转 URL、图标、描述、Docker 主机、容器名、健康检查地址、是否展开统计。
+4. `widget`（监控组件）与 `options`（列表）用**原始 YAML 文本框**填写（第一行通常是 `type: xxx`），粘贴你现有的配置即可，支持所有 widget 类型（含 customapi 的 `mappings`、openwrt 的 `options` 等）。
+5. 每次保存都会实时写回 `config/services.yaml`，返回首页即可看到更新。
 
 ---
 
 ## 📁 新增 / 改动的文件（相对上游）
 
 ```
-src/utils/config/admin.js          # 读取/写回 config/bookmarks.yaml（备份 + 原子写）
+src/utils/config/admin.js          # 读取/写回 config/bookmarks.yaml 与 services.yaml（备份 + 原子写）
 src/pages/api/admin/bookmarks.js   # 书签 CRUD 接口（GET/POST/PUT/DELETE）
 src/pages/api/admin/groups.js      # 分类 CRUD 接口（GET/POST/DELETE）
-src/pages/admin.jsx                # 后台管理页面
+src/pages/api/admin/services.js    # 服务 CRUD 接口（GET/POST/PUT/DELETE）
+src/pages/api/admin/service-groups.js  # 服务分组 CRUD 接口（GET/POST/DELETE）
+src/pages/admin.jsx                # 后台管理页面（书签 / 服务 双标签）
 src/pages/index.jsx                # 首页新增「后台管理」入口（齿轮图标）
 .github/workflows/fork-docker-publish.yml  # GHCR 多架构自动构建
 docker-compose.yml                 # 飞牛 NAS / 通用部署

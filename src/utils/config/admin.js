@@ -137,3 +137,149 @@ export async function deleteGroup(name) {
   await writeBookmarksModel(cleaned);
   return cleaned;
 }
+
+// ---------------------------------------------------------------------------
+// Services (config/services.yaml) — grouped list of services, each with an
+// optional `widget` (type-specific monitor) and `options` (list).
+// Homepage format:
+//   - GroupName:
+//       - ServiceName:
+//           icon: ...
+//           href: ...
+//           widget: {...}
+//           options: [...]
+// ---------------------------------------------------------------------------
+
+const SERVICES_FILE = "services.yaml";
+
+function servicesPath() {
+  return path.join(CONF_DIR, SERVICES_FILE);
+}
+
+function cleanServiceFields(fields) {
+  const out = {};
+  Object.entries(fields || {}).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === "") return;
+    if (k === "widget" && v && typeof v === "object" && Object.keys(v).length === 0) return;
+    if (k === "options" && Array.isArray(v) && v.length === 0) return;
+    out[k] = v;
+  });
+  return out;
+}
+
+export async function readServicesModel() {
+  checkAndCopyConfig(SERVICES_FILE);
+
+  const file = servicesPath();
+  let raw;
+  try {
+    raw = await fs.readFile(file, "utf8");
+  } catch (e) {
+    return [];
+  }
+
+  let parsed;
+  try {
+    parsed = yaml.load(raw);
+  } catch (e) {
+    throw new Error(`Failed to parse ${SERVICES_FILE}: ${e.message}`);
+  }
+  if (!Array.isArray(parsed)) return [];
+
+  return parsed.map((group) => {
+    const groupName = Object.keys(group)[0];
+    const entries = Array.isArray(group[groupName]) ? group[groupName] : [];
+    return {
+      name: groupName,
+      services: entries.map((entry) => {
+        const svcName = Object.keys(entry)[0];
+        const fields = entry[svcName] && typeof entry[svcName] === "object" ? entry[svcName] : {};
+        return { name: svcName, ...fields };
+      }),
+    };
+  });
+}
+
+function servicesModelToYaml(model) {
+  return model.map((group) => ({
+    [group.name]: (group.services || []).map((svc) => {
+      const { name, ...rest } = svc;
+      return { [name]: cleanServiceFields(rest) };
+    }),
+  }));
+}
+
+export async function writeServicesModel(model) {
+  const file = servicesPath();
+
+  try {
+    const prev = await fs.readFile(file, "utf8");
+    await fs.writeFile(`${file}.bak`, prev, "utf8");
+  } catch (e) {
+    // no previous file yet
+  }
+
+  const yamlStr = yaml.dump(servicesModelToYaml(model), { lineWidth: -1, noRefs: true, sortKeys: false });
+  const tmp = `${file}.tmp`;
+  await fs.writeFile(tmp, `---\n${yamlStr}`, "utf8");
+  await fs.rename(tmp, file);
+}
+
+export async function addService({ group, name, icon, href, description, server, container, showStats, ping, widget, options }) {
+  const model = await readServicesModel();
+  let g = model.find((x) => x.name === group);
+  if (!g) {
+    g = { name: group, services: [] };
+    model.push(g);
+  }
+  if (g.services.some((s) => s.name === name)) {
+    throw new Error(`Service "${name}" already exists in group "${group}"`);
+  }
+  g.services.push(cleanServiceFields({ icon, href, description, server, container, showStats, ping, widget, options }));
+  await writeServicesModel(model);
+  return model;
+}
+
+export async function updateService({ oldGroup, oldName, group, name, icon, href, description, server, container, showStats, ping, widget, options }) {
+  const model = await readServicesModel();
+  const og = model.find((x) => x.name === oldGroup);
+  if (og) og.services = og.services.filter((s) => s.name !== oldName);
+
+  let g = model.find((x) => x.name === group);
+  if (!g) {
+    g = { name: group, services: [] };
+    model.push(g);
+  }
+  g.services.push(cleanServiceFields({ icon, href, description, server, container, showStats, ping, widget, options }));
+  await writeServicesModel(model);
+  return model;
+}
+
+export async function deleteService({ group, name }) {
+  const model = await readServicesModel();
+  const g = model.find((x) => x.name === group);
+  if (g) g.services = g.services.filter((s) => s.name !== name);
+  const cleaned = model.filter((x) => (x.name === group ? g && g.services.length > 0 : true));
+  await writeServicesModel(cleaned);
+  return cleaned;
+}
+
+export async function addServiceGroup(name) {
+  const model = await readServicesModel();
+  if (model.some((x) => x.name === name)) {
+    throw new Error(`Group "${name}" already exists`);
+  }
+  model.push({ name, services: [] });
+  await writeServicesModel(model);
+  return model;
+}
+
+export async function deleteServiceGroup(name) {
+  const model = await readServicesModel();
+  const cleaned = model.filter((x) => x.name !== name);
+  if (cleaned.length === model.length) {
+    throw new Error(`Group "${name}" not found`);
+  }
+  await writeServicesModel(cleaned);
+  return cleaned;
+}
