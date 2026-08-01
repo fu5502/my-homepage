@@ -2,7 +2,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import yaml from "js-yaml";
-import { BiArrowBack, BiCog, BiPencil, BiPlus, BiTrash } from "react-icons/bi";
+import { BiArrowBack, BiCog, BiChevronDown, BiChevronRight, BiPencil, BiPlus, BiTrash } from "react-icons/bi";
 
 // 仓库地址固定显示在页脚（首页 + 后台），与首页保持一致
 const GITHUB_REPO_URL = "https://github.com/fu5502/my-homepage";
@@ -24,6 +24,15 @@ function BookmarksPanel() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [newGroup, setNewGroup] = useState("");
+
+  const [expanded, setExpanded] = useState(() => new Set());
+  const toggleGroup = (name) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
 
   const [form, setForm] = useState({ group: "", name: "", href: "", abbr: "", icon: "", description: "" });
   const [editing, setEditing] = useState(null);
@@ -233,47 +242,61 @@ function BookmarksPanel() {
           {groups.length === 0 && (
             <p className="text-sm opacity-60">还没有任何分类，先在上方添加一个分类吧。</p>
           )}
-          {groups.map((g) => (
-            <div
-              key={g.name}
-              className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold">{g.name}</h3>
-                <button
-                  onClick={() => deleteGroupFn(g.name)}
-                  className="text-red-500 hover:underline text-sm flex items-center gap-1"
-                >
-                  <BiTrash /> 删除分类
-                </button>
+          {groups.map((g) => {
+            const open = expanded.has(g.name);
+            return (
+              <div
+                key={g.name}
+                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(g.name)}
+                    className="flex items-center gap-1 font-semibold hover:text-theme-600 dark:hover:text-theme-400"
+                    title={open ? "收起" : "展开"}
+                  >
+                    {open ? <BiChevronDown /> : <BiChevronRight />}
+                    <span>{g.name}</span>
+                    <span className="text-xs opacity-50 font-normal">({g.bookmarks.length})</span>
+                  </button>
+                  <button
+                    onClick={() => deleteGroupFn(g.name)}
+                    className="text-red-500 hover:underline text-sm flex items-center gap-1"
+                  >
+                    <BiTrash /> 删除分类
+                  </button>
+                </div>
+                {open && (
+                  <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {g.bookmarks.map((bm) => (
+                      <li key={bm.name} className="py-2 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{bm.name}</div>
+                          <div className="text-xs opacity-60 truncate">{bm.href}</div>
+                        </div>
+                        <div className="flex gap-3 shrink-0">
+                          <button
+                            onClick={() => editLink(g.name, bm)}
+                            className="text-theme-600 dark:text-theme-400 hover:underline text-sm flex items-center gap-1"
+                          >
+                            <BiPencil /> 编辑
+                          </button>
+                          <button
+                            onClick={() => deleteLink(g.name, bm.name)}
+                            className="text-red-500 hover:underline text-sm flex items-center gap-1"
+                          >
+                            <BiTrash /> 删除
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                    {g.bookmarks.length === 0 && <li className="py-2 text-xs opacity-60">（空分类）</li>}
+                  </ul>
+                )}
               </div>
-              <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-                {g.bookmarks.map((bm) => (
-                  <li key={bm.name} className="py-2 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="font-medium truncate">{bm.name}</div>
-                      <div className="text-xs opacity-60 truncate">{bm.href}</div>
-                    </div>
-                    <div className="flex gap-3 shrink-0">
-                      <button
-                        onClick={() => editLink(g.name, bm)}
-                        className="text-theme-600 dark:text-theme-400 hover:underline text-sm flex items-center gap-1"
-                      >
-                        <BiPencil /> 编辑
-                      </button>
-                      <button
-                        onClick={() => deleteLink(g.name, bm.name)}
-                        className="text-red-500 hover:underline text-sm flex items-center gap-1"
-                      >
-                        <BiTrash /> 删除
-                      </button>
-                    </div>
-                  </li>
-                ))}
-                {g.bookmarks.length === 0 && <li className="py-2 text-xs opacity-60">（空分类）</li>}
-              </ul>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
@@ -302,6 +325,15 @@ function ServicesPanel() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [newGroup, setNewGroup] = useState("");
+
+  const [expanded, setExpanded] = useState(() => new Set());
+  const toggleGroup = (name) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name);
+      else next.add(name);
+      return next;
+    });
 
   const [form, setForm] = useState(emptyServiceForm());
   const [editing, setEditing] = useState(null);
@@ -576,50 +608,64 @@ function ServicesPanel() {
           {groups.length === 0 && (
             <p className="text-sm opacity-60">还没有任何分组，先在上方添加一个分组吧。</p>
           )}
-          {groups.map((g) => (
-            <div
-              key={g.name}
-              className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow"
-            >
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="font-semibold">{g.name}</h3>
-                <button
-                  onClick={() => deleteGroupFn(g.name)}
-                  className="text-red-500 hover:underline text-sm flex items-center gap-1"
-                >
-                  <BiTrash /> 删除分组
-                </button>
+          {groups.map((g) => {
+            const open = expanded.has(g.name);
+            return (
+              <div
+                key={g.name}
+                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow"
+              >
+                <div className="flex items-center justify-between mb-2">
+                  <button
+                    type="button"
+                    onClick={() => toggleGroup(g.name)}
+                    className="flex items-center gap-1 font-semibold hover:text-theme-600 dark:hover:text-theme-400"
+                    title={open ? "收起" : "展开"}
+                  >
+                    {open ? <BiChevronDown /> : <BiChevronRight />}
+                    <span>{g.name}</span>
+                    <span className="text-xs opacity-50 font-normal">({g.services.length})</span>
+                  </button>
+                  <button
+                    onClick={() => deleteGroupFn(g.name)}
+                    className="text-red-500 hover:underline text-sm flex items-center gap-1"
+                  >
+                    <BiTrash /> 删除分组
+                  </button>
+                </div>
+                {open && (
+                  <ul className="divide-y divide-gray-100 dark:divide-gray-700">
+                    {g.services.map((svc) => (
+                      <li key={svc.name} className="py-2 flex items-center justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="font-medium truncate">{svc.name}</div>
+                          <div className="text-xs opacity-60 truncate">{svc.href}</div>
+                          {svc.widget?.type && (
+                            <div className="text-[10px] opacity-50 truncate">widget: {svc.widget.type}</div>
+                          )}
+                        </div>
+                        <div className="flex gap-3 shrink-0">
+                          <button
+                            onClick={() => editService(g.name, svc)}
+                            className="text-theme-600 dark:text-theme-400 hover:underline text-sm flex items-center gap-1"
+                          >
+                            <BiPencil /> 编辑
+                          </button>
+                          <button
+                            onClick={() => deleteService(g.name, svc.name)}
+                            className="text-red-500 hover:underline text-sm flex items-center gap-1"
+                          >
+                            <BiTrash /> 删除
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                    {g.services.length === 0 && <li className="py-2 text-xs opacity-60">（空分组）</li>}
+                  </ul>
+                )}
               </div>
-              <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-                {g.services.map((svc) => (
-                  <li key={svc.name} className="py-2 flex items-center justify-between gap-2">
-                    <div className="min-w-0">
-                      <div className="font-med-ium truncate">{svc.name}</div>
-                      <div className="text-xs opacity-60 truncate">{svc.href}</div>
-                      {svc.widget?.type && (
-                        <div className="text-[10px] opacity-50 truncate">widget: {svc.widget.type}</div>
-                      )}
-                    </div>
-                    <div className="flex gap-3 shrink-0">
-                      <button
-                        onClick={() => editService(g.name, svc)}
-                        className="text-theme-600 dark:text-theme-400 hover:underline text-sm flex items-center gap-1"
-                      >
-                        <BiPencil /> 编辑
-                      </button>
-                      <button
-                        onClick={() => deleteService(g.name, svc.name)}
-                        className="text-red-500 hover:underline text-sm flex items-center gap-1"
-                      >
-                        <BiTrash /> 删除
-                      </button>
-                    </div>
-                  </li>
-                ))}
-                {g.services.length === 0 && <li className="py-2 text-xs opacity-60">（空分组）</li>}
-              </ul>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
