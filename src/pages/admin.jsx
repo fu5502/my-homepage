@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import yaml from "js-yaml";
 import {
   BiArrowBack, BiBook, BiCheckCircle, BiCog, BiChevronDown, BiChevronRight,
-  BiErrorCircle, BiGlobe, BiPencil, BiPlus, BiServer, BiSlider, BiTrash,
+  BiErrorCircle, BiGlobe, BiLogOut, BiPencil, BiPlus, BiServer, BiSlider, BiTrash,
 } from "react-icons/bi";
+import { signOut } from "next-auth/react";
 
 // 仓库地址固定显示在页脚（首页 + 后台），与首页保持一致
 const GITHUB_REPO_URL = "https://github.com/fu5502/my-homepage";
@@ -1369,9 +1370,22 @@ export default function Admin() {
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <BiCog /> 后台管理
           </h1>
-          <Link href="/" className="flex items-center gap-1 text-theme-600 dark:text-theme-400 hover:underline">
-            <BiArrowBack /> 返回首页
-          </Link>
+          <div className="flex items-center gap-4">
+            <ConfirmButton
+              label={
+                <span className="flex items-center gap-1">
+                  <BiLogOut /> 退出登录
+                </span>
+              }
+              hint="确定退出登录？"
+              confirmText="退出"
+              onConfirm={() => signOut({ callbackUrl: "/auth/signin" })}
+              className="flex items-center gap-1 text-theme-600 dark:text-theme-400 hover:underline"
+            />
+            <Link href="/" className="flex items-center gap-1 text-theme-600 dark:text-theme-400 hover:underline">
+              <BiArrowBack /> 返回首页
+            </Link>
+          </div>
         </div>
 
         <div className="flex gap-2 mb-6 flex-wrap">
