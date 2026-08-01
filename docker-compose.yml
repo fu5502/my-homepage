@@ -1,0 +1,34 @@
+# 飞牛 NAS (FnOS) 部署配置 —— 拉取 GHCR 预构建镜像（含后台 admin 代码）
+#
+# 镜像由 GitHub Actions 自动构建并推送到 GHCR，地址：
+#   ghcr.io/fu5502/my-homepage:latest
+#
+# 用法（在飞牛NAS 终端，进入本仓库目录后）：
+#   docker compose pull
+#   docker compose up -d
+#
+# 说明：
+# - ./config 目录挂载到容器 /config（entrypoint 自动软链为 /app/config），
+#   后台在 /admin 里新增/修改的站点链接会实时写回这里的 bookmarks.yaml。
+# - PUID/PGID 设成飞牛首个用户的 uid/gid（通常是 1000），
+#   这样容器内写出的配置文件在 NAS 上归你这个用户，方便用 SMB/文件管理器编辑。
+# - 若该路径在飞牛上不存在，请先到「文件」里建好共享文件夹再填真实绝对路径，
+#   例如：/vol1/1000/docker/homepage/config
+
+services:
+  homepage:
+    image: ghcr.io/fu5502/my-homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./config:/config
+    environment:
+      # 开启登录鉴权，保护 /admin 与 api/admin/*（需在 config/settings.yaml 配置密码/OIDC）
+      - HOMEPAGE_AUTH_ENABLED=true
+      # 飞牛首个用户通常 uid/gid=1000；如不确定可临时设 0 让容器以 root 运行
+      - PUID=1000
+      - PGID=1000
+      # 容器监听地址（FnOS 网络环境下 0.0.0.0 更稳妥）
+      - HOSTNAME=0.0.0.0

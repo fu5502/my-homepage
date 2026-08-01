@@ -1,0 +1,85 @@
+import Block from "components/services/widget/block";
+import Container from "components/services/widget/container";
+import { useTranslation } from "next-i18next/pages";
+
+import useWidgetAPI from "utils/proxy/use-widget-api";
+
+export const fritzboxDefaultFields = ["connectionStatus", "uptime", "maxDown", "maxUp"];
+
+export default function Component({ service }) {
+  const { t } = useTranslation();
+  const { widget } = service;
+  const { data: fritzboxData, error: fritzboxError } = useWidgetAPI(widget, "status");
+
+  if (fritzboxError) {
+    return <Container service={service} error={fritzboxError} />;
+  }
+
+  // Default fields
+  if (!widget.fields?.length > 0) {
+    widget.fields = fritzboxDefaultFields;
+  }
+  const MAX_ALLOWED_FIELDS = 4;
+  // Limits max number of displayed fields
+  if (widget.fields?.length > MAX_ALLOWED_FIELDS) {
+    widget.fields = widget.fields.slice(0, MAX_ALLOWED_FIELDS);
+  }
+
+  if (!fritzboxData) {
+    return (
+      <Container service={service}>
+        <Block label="fritzbox.connectionStatus" />
+        <Block label="fritzbox.uptime" />
+        <Block label="fritzbox.maxDown" />
+        <Block label="fritzbox.maxUp" />
+        <Block label="fritzbox.down" />
+        <Block label="fritzbox.up" />
+        <Block label="fritzbox.received" />
+        <Block label="fritzbox.sent" />
+        <Block label="fritzbox.externalIPAddress" />
+        <Block label="fritzbox.externalIPv6Address" />
+        <Block label="fritzbox.externalIPv6Prefix" />
+      </Container>
+    );
+  }
+
+  return (
+    <Container service={service}>
+      <Block label="fritzbox.connectionStatus" value={t(`fritzbox.connectionStatus${fritzboxData.connectionStatus}`)} />
+      <Block label="fritzbox.uptime" value={t("common.duration", { value: fritzboxData.uptime })} />
+      <Block
+        label="fritzbox.maxDown"
+        value={t("common.byterate", { value: fritzboxData.maxDown / 8, decimals: 1 })}
+        highlightValue={fritzboxData.maxDown / 8}
+      />
+      <Block
+        label="fritzbox.maxUp"
+        value={t("common.byterate", { value: fritzboxData.maxUp / 8, decimals: 1 })}
+        highlightValue={fritzboxData.maxUp / 8}
+      />
+      <Block
+        label="fritzbox.down"
+        value={t("common.byterate", { value: fritzboxData.down, decimals: 1 })}
+        highlightValue={fritzboxData.down}
+      />
+      <Block
+        label="fritzbox.up"
+        value={t("common.byterate", { value: fritzboxData.up, decimals: 1 })}
+        highlightValue={fritzboxData.up}
+      />
+      <Block
+        label="fritzbox.received"
+        value={t("common.bytes", { value: fritzboxData.received })}
+        highlightValue={fritzboxData.received}
+      />
+      <Block
+        label="fritzbox.sent"
+        value={t("common.bytes", { value: fritzboxData.sent })}
+        highlightValue={fritzboxData.sent}
+      />
+      <Block label="fritzbox.externalIPAddress" value={fritzboxData.externalIPAddress} />
+      <Block label="fritzbox.externalIPv6Address" value={fritzboxData.externalIPv6Address} />
+      <Block label="fritzbox.externalIPv6Prefix" value={fritzboxData.externalIPv6Prefix} />
+    </Container>
+  );
+}
