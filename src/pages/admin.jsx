@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Head from "next/head";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import yaml from "js-yaml";
@@ -1423,11 +1424,18 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen p-6 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
+      <Head>
+        <title>后台管理 · 我的导航面板</title>
+        <meta name="description" content="管理书签、服务、站点信息与外观设置的私有仪表盘后台" />
+      </Head>
       <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <BiCog /> 后台管理
-          </h1>
+        <div className="flex items-start justify-between mb-6 gap-4">
+          <div>
+            <h1 className="text-2xl font-bold flex items-center gap-2">
+              <BiCog /> 后台管理
+            </h1>
+            <p className="text-sm opacity-60 mt-1">集中管理首页的书签、服务、站点信息与外观设置。</p>
+          </div>
           <div className="flex items-center gap-4">
             <ConfirmButton
               label={
@@ -1455,7 +1463,7 @@ export default function Admin() {
                 : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             }`}
           >
-            <BiBook /> 书签 / 链接
+            <BiBook /> 书签链接
           </button>
           <button
             onClick={() => setTab("services")}
@@ -1465,7 +1473,7 @@ export default function Admin() {
                 : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
             }`}
           >
-            <BiServer /> 服务 / 分组
+            <BiServer /> 服务分组
           </button>
           <button
             onClick={() => setTab("site")}
