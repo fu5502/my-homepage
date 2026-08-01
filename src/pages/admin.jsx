@@ -3,6 +3,9 @@ import { useCallback, useEffect, useState } from "react";
 import yaml from "js-yaml";
 import { BiArrowBack, BiCog, BiPencil, BiPlus, BiTrash } from "react-icons/bi";
 
+// 仓库地址固定显示在首页页脚版权处，不在后台提供修改入口
+const GITHUB_REPO_URL = "https://github.com/fu5502/my-homepage";
+
 // ----------------------------- 书签 标签 -----------------------------
 
 const LINK_FIELDS = [
@@ -17,6 +20,7 @@ function BookmarksPanel() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [newGroup, setNewGroup] = useState("");
 
   const [form, setForm] = useState({ group: "", name: "", href: "", abbr: "", icon: "", description: "" });
@@ -48,6 +52,7 @@ function BookmarksPanel() {
   const submitLink = async (e) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     const body = { ...form };
     try {
       const res = editing
@@ -65,7 +70,9 @@ function BookmarksPanel() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "保存失败");
       }
+      const label = editing ? `已更新链接「${editing.name}」` : `已添加链接「${form.name}」`;
       setGroups(await res.json());
+      setNotice(label);
       resetForm();
     } catch (e) {
       setError(e.message);
@@ -75,6 +82,7 @@ function BookmarksPanel() {
   const deleteLink = async (group, name) => {
     if (!confirm(`确定删除链接 "${name}" ？`)) return;
     setError("");
+    setNotice("");
     try {
       const res = await fetch("/api/admin/bookmarks", {
         method: "DELETE",
@@ -83,6 +91,7 @@ function BookmarksPanel() {
       });
       if (!res.ok) throw new Error("删除失败");
       setGroups(await res.json());
+      setNotice(`已删除链接「${name}」`);
     } catch (e) {
       setError(e.message);
     }
@@ -104,6 +113,7 @@ function BookmarksPanel() {
   const addGroupFn = async (e) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     if (!newGroup.trim()) return;
     try {
       const res = await fetch("/api/admin/groups", {
@@ -116,6 +126,7 @@ function BookmarksPanel() {
         throw new Error(data.error || "添加分类失败");
       }
       setGroups(await res.json());
+      setNotice(`已添加分类「${newGroup.trim()}」`);
       setNewGroup("");
     } catch (e) {
       setError(e.message);
@@ -125,6 +136,7 @@ function BookmarksPanel() {
   const deleteGroupFn = async (name) => {
     if (!confirm(`确定删除分类 "${name}" 及其下所有链接？`)) return;
     setError("");
+    setNotice("");
     try {
       const res = await fetch("/api/admin/groups", {
         method: "DELETE",
@@ -133,6 +145,7 @@ function BookmarksPanel() {
       });
       if (!res.ok) throw new Error("删除分类失败");
       setGroups(await res.json());
+      setNotice(`已删除分类「${name}」`);
     } catch (e) {
       setError(e.message);
     }
@@ -140,6 +153,8 @@ function BookmarksPanel() {
 
   return (
     <div className="space-y-6">
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      {notice && <p className="text-sm text-green-600 dark:text-green-400">{notice}</p>}
       <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
         <h2 className="font-semibold mb-3">
           {editing ? `编辑链接：${editing.group} / ${editing.name}` : "添加站点链接"}
@@ -283,6 +298,7 @@ function ServicesPanel() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [newGroup, setNewGroup] = useState("");
 
   const [form, setForm] = useState(emptyServiceForm());
@@ -331,6 +347,7 @@ function ServicesPanel() {
   const submitService = async (e) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     try {
       const widget = parseYamlBlock(widgetText, "widget");
       const options = parseYamlBlock(optionsText, "options");
@@ -355,7 +372,9 @@ function ServicesPanel() {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || "保存失败");
       }
+      const label = editing ? `已更新服务「${editing.name}」` : `已添加服务「${form.name}」`;
       setGroups(await res.json());
+      setNotice(label);
       resetForm();
     } catch (e) {
       setError(e.message);
@@ -365,6 +384,7 @@ function ServicesPanel() {
   const deleteService = async (group, name) => {
     if (!confirm(`确定删除服务 "${name}" ？`)) return;
     setError("");
+    setNotice("");
     try {
       const res = await fetch("/api/admin/services", {
         method: "DELETE",
@@ -373,6 +393,7 @@ function ServicesPanel() {
       });
       if (!res.ok) throw new Error("删除失败");
       setGroups(await res.json());
+      setNotice(`已删除服务「${name}」`);
     } catch (e) {
       setError(e.message);
     }
@@ -400,6 +421,7 @@ function ServicesPanel() {
   const addGroupFn = async (e) => {
     e.preventDefault();
     setError("");
+    setNotice("");
     if (!newGroup.trim()) return;
     try {
       const res = await fetch("/api/admin/service-groups", {
@@ -412,6 +434,7 @@ function ServicesPanel() {
         throw new Error(data.error || "添加分组失败");
       }
       setGroups(await res.json());
+      setNotice(`已添加分组「${newGroup.trim()}」`);
       setNewGroup("");
     } catch (e) {
       setError(e.message);
@@ -421,6 +444,7 @@ function ServicesPanel() {
   const deleteGroupFn = async (name) => {
     if (!confirm(`确定删除分组 "${name}" 及其下所有服务？`)) return;
     setError("");
+    setNotice("");
     try {
       const res = await fetch("/api/admin/service-groups", {
         method: "DELETE",
@@ -429,6 +453,7 @@ function ServicesPanel() {
       });
       if (!res.ok) throw new Error("删除分组失败");
       setGroups(await res.json());
+      setNotice(`已删除分组「${name}」`);
     } catch (e) {
       setError(e.message);
     }
@@ -436,6 +461,8 @@ function ServicesPanel() {
 
   return (
     <div className="space-y-6">
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      {notice && <p className="text-sm text-green-600 dark:text-green-400">{notice}</p>}
       <div className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow">
         <h2 className="font-semibold mb-3">
           {editing ? `编辑服务：${editing.group} / ${editing.name}` : "添加服务"}
@@ -619,7 +646,7 @@ function SitePanel() {
         if (!res.ok) throw new Error("加载失败");
         const data = await res.json();
         setCopyright(data.copyright || "");
-        setGithub(data.github || "");
+        setGithub(GITHUB_REPO_URL);
         setError("");
       } catch (e) {
         setError(e.message);
@@ -671,14 +698,17 @@ function SitePanel() {
             <p className="text-[11px] opacity-50 mt-1">支持纯文本，会显示在首页页脚左侧。</p>
           </div>
           <div>
-            <label className="block text-xs mb-1">GitHub 地址</label>
+            <label className="block text-xs mb-1">GitHub 地址（固定显示在页脚版权处，不可修改）</label>
             <input
-              className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
-              value={github}
+              className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 opacity-70 cursor-not-allowed"
+              value={github || GITHUB_REPO_URL}
+              readOnly
+              disabled
               placeholder="https://github.com/fu5502/my-homepage"
-              onChange={(e) => setGithub(e.target.value)}
             />
-            <p className="text-[11px] opacity-50 mt-1">填写后，首页页脚会显示一个 GitHub 链接图标。</p>
+            <p className="text-[11px] opacity-50 mt-1">
+              GitHub 仓库地址固定在首页页脚版权处，后台不提供修改入口；如需更换请直接编辑 config/site.yaml。
+            </p>
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <div className="flex items-center gap-3">

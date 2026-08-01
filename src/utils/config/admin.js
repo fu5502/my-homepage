@@ -235,7 +235,7 @@ export async function addService({ group, name, icon, href, description, server,
   if (g.services.some((s) => s.name === name)) {
     throw new Error(`Service "${name}" already exists in group "${group}"`);
   }
-  g.services.push(cleanServiceFields({ icon, href, description, server, container, showStats, ping, widget, options }));
+  g.services.push(cleanServiceFields({ name, icon, href, description, server, container, showStats, ping, widget, options }));
   await writeServicesModel(model);
   return model;
 }
@@ -250,7 +250,7 @@ export async function updateService({ oldGroup, oldName, group, name, icon, href
     g = { name: group, services: [] };
     model.push(g);
   }
-  g.services.push(cleanServiceFields({ icon, href, description, server, container, showStats, ping, widget, options }));
+  g.services.push(cleanServiceFields({ name, icon, href, description, server, container, showStats, ping, widget, options }));
   await writeServicesModel(model);
   return model;
 }
