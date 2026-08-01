@@ -4,12 +4,15 @@
 #   ghcr.io/fu5502/my-homepage:latest
 #
 # 用法（在飞牛NAS 终端，进入本仓库目录后）：
+#   cp .env.example .env   # 首次部署，然后编辑 .env 填入你自己的密码等
 #   docker compose pull
 #   docker compose up -d
 #
 # 说明：
+# - 所有敏感信息（密码、会话密钥、内网地址）都从同目录的 .env 读取，
+#   .env 已被 .gitignore 排除，不会提交到 Git 仓库。
 # - ./config 目录挂载到容器 /config（entrypoint 自动软链为 /app/config），
-#   后台在 /admin 里新增/修改的站点链接会实时写回这里的 bookmarks.yaml。
+#   后台在 /admin 里新增/修改的配置会实时写回这里的 yaml 文件。
 # - PUID/PGID 设成飞牛首个用户的 uid/gid（通常是 1000），
 #   这样容器内写出的配置文件在 NAS 上归你这个用户，方便用 SMB/文件管理器编辑。
 # - 若该路径在飞牛上不存在，请先到「文件」里建好共享文件夹再填真实绝对路径，
@@ -21,24 +24,24 @@ services:
     container_name: homepage
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${HOMEPAGE_PORT:-3000}:3000"
     volumes:
       - ./config:/config
     environment:
       # ===== 登录鉴权（密码方式）=====
       # 注意：本版本 homepage 的密码登录走环境变量，而非 settings.yaml 的 auth.users。
       # 必须同时具备下面 4 个变量，next-auth 才会注册出「密码」登录方式。
-      - HOMEPAGE_AUTH_ENABLED=true
-      # 登录密码（单一全局密码，登录页只填密码、无需用户名）
-      - HOMEPAGE_AUTH_PASSWORD=fugang520123
-      # 鉴权会话密钥（随机串，改了会让已登录会话失效）
-      - HOMEPAGE_AUTH_SECRET=mcGCoKhUAYwUNtwGTguEx27yQkVV2DBahKovvNCfGwI
+      - HOMEPAGE_AUTH_ENABLED=${HOMEPAGE_AUTH_ENABLED:-true}
+      # 登录密码（单一全局密码，登录页只填密码、无需用户名）—— 在 .env 中设置
+      - HOMEPAGE_AUTH_PASSWORD=${HOMEPAGE_AUTH_PASSWORD:?请先在 .env 中设置 HOMEPAGE_AUTH_PASSWORD}
+      # 鉴权会话密钥（随机串，改了会让已登录会话失效）—— 在 .env 中设置
+      - HOMEPAGE_AUTH_SECRET=${HOMEPAGE_AUTH_SECRET:?请先在 .env 中设置 HOMEPAGE_AUTH_SECRET}
       # 外部访问地址，next-auth 必填（换成你的 NAS IP/域名）
-      - HOMEPAGE_EXTERNAL_URL=http://192.168.99.147:3000
+      - HOMEPAGE_EXTERNAL_URL=${HOMEPAGE_EXTERNAL_URL:?请先在 .env 中设置 HOMEPAGE_EXTERNAL_URL}
       # 飞牛首个用户通常 uid/gid=1000；如不确定可临时设 0 让容器以 root 运行
-      - PUID=1000
-      - PGID=1000
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
       # 容器监听地址（FnOS 网络环境下 0.0.0.0 更稳妥）
       - HOSTNAME=0.0.0.0
       # homepage 的 Host 校验白名单：允许通过该地址访问（改成你的 NAS IP/域名）
-      - HOMEPAGE_ALLOWED_HOSTS=192.168.99.147:3000,localhost:3000
+      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS:-localhost:3000}

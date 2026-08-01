@@ -45,9 +45,18 @@ docker compose up -d
 | `HOMEPAGE_AUTH_ENABLED=true` | 开启鉴权 |
 | `HOMEPAGE_AUTH_PASSWORD` | 登录密码（单一全局密码，登录页只填密码、无需用户名） |
 | `HOMEPAGE_AUTH_SECRET` | 会话密钥（随机串，改了会让已登录会话失效） |
-| `HOMEPAGE_EXTERNAL_URL` | 外部访问地址，next-auth 必填，例如 `http://192.168.99.147:3000` |
+| `HOMEPAGE_EXTERNAL_URL` | 外部访问地址，next-auth 必填，例如 `http://192.168.1.100:3000` |
 
-仓库内的 `docker-compose.yml` 已配好这 4 个变量（示例密码 `fugang520123`），直接 `docker compose up -d` 即可。若用 `docker run`，请自行补上这些 `-e`。
+这些变量由仓库根目录的 `.env` 提供（**已被 .gitignore 排除，不会提交到 Git**）。首次部署：
+
+```bash
+cp .env.example .env   # 然后编辑 .env，填入自己的密码与访问地址
+docker compose up -d
+```
+
+`HOMEPAGE_AUTH_SECRET` 可用 `openssl rand -base64 32` 生成。若用 `docker run`，请自行把这些变量补成 `-e` 参数。
+
+> ⚠️ 切勿把真实密码写进 `docker-compose.yml`、README 或任何会提交到 Git 的文件。
 
 OIDC / Header 等其他鉴权方式见 [homepage 官方文档](https://gethomepage.dev/configs/settings/#auth)。
 

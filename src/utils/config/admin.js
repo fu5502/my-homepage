@@ -339,3 +339,161 @@ export async function writeSiteModel({ copyright, github }) {
   await fs.rename(tmp, file);
   return data;
 }
+
+// ---------------------------------------------------------------------------
+// Global settings (config/settings.yaml) — title, language, theme, background,
+// layout, providers, ... The whole document is handed to the admin UI and
+// written back as-is, so any key we do not surface in the UI still survives a
+// round-trip. Note: YAML comments are NOT preserved (js-yaml drops them), which
+// is why every write leaves a `settings.yaml.bak` next to the file.
+// ---------------------------------------------------------------------------
+
+const SETTINGS_FILE = "settings.yaml";
+
+// Keys emitted first (in this order) so the generated file stays readable.
+const SETTINGS_KEY_ORDER = [
+  "title",
+  "description",
+  "startUrl",
+  "language",
+  "favicon",
+  "theme",
+  "color",
+  "headerStyle",
+  "target",
+  "iconStyle",
+  "statusStyle",
+  "cardBlur",
+  "hideVersion",
+  "disableUpdateCheck",
+  "disableCollapse",
+  "fiveColumns",
+  "maxGroupColumns",
+  "fullWidth",
+  "useEqualHeights",
+  "hideErrors",
+  "showStats",
+  "base",
+  "providers",
+  "background",
+  "quicklaunch",
+  "layout",
+];
+
+function settingsPath() {
+  return path.join(CONF_DIR, SETTINGS_FILE);
+}
+
+// settings.yaml accepts `layout` either as a mapping or as a list of
+// single-key mappings. Normalize to a mapping so the UI has one shape to
+// deal with (mirrors getSettings() in utils/config/config.js).
+function normalizeLayout(layout) {
+  if (Array.isArray(layout)) {
+    const out = {};
+    layout.forEach((item) => {
+      if (!item || typeof item !== "object") return;
+      const name = Object.keys(item)[0];
+      if (name) out[name] = item[name];
+    });
+    return out;
+  }
+  return layout;
+}
+
+// Order known keys first, then append anything else untouched.
+function orderSettings(model) {
+  const out = {};
+  SETTINGS_KEY_ORDER.forEach((key) => {
+    if (model[key] !== undefined) out[key] = model[key];
+  });
+  Object.keys(model).forEach((key) => {
+    if (out[key] === undefined) out[key] = model[key];
+  });
+  return out;
+}
+
+// Drop keys the UI cleared out ("" / null / undefined) so they fall back to
+// homepage defaults instead of being written as empty values.
+function pruneEmpty(value) {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return value;
+  const out = {};
+  Object.entries(value).forEach(([k, v]) => {
+    if (v === undefined || v === null || v === "") return;
+    if (typeof v === "object" && !Array.isArray(v)) {
+      const nested = pruneEmpty(v);
+      if (Object.keys(nested).length === 0) return;
+      out[k] = nested;
+      return;
+    }
+    out[k] = v;
+  });
+  return out;
+}
+
+// `layout` is special: the key order decides the order groups are rendered in,
+// so an entry with no options still carries meaning and must not be pruned
+// away. Only the options inside each group get cleaned.
+function pruneLayout(layout) {
+  if (!layout || typeof layout !== "object" || Array.isArray(layout)) return undefined;
+  const out = {};
+  Object.entries(layout).forEach(([group, options]) => {
+    if (!group) return;
+    out[group] = options && typeof options === "object" && !Array.isArray(options) ? pruneEmpty(options) : {};
+  });
+  return Object.keys(out).length ? out : undefined;
+}
+
+export async function readSettingsModel() {
+  checkAndCopyConfig(SETTINGS_FILE);
+
+  const file = settingsPath();
+  let raw;
+  try {
+    // Read raw (no env-var substitution) so {{HOMEPAGE_VAR_x}} tokens survive
+    // a save round-trip instead of being baked into the file.
+    raw = await fs.readFile(file, "utf8");
+  } catch (e) {
+    return {};
+  }
+
+  let parsed;
+  try {
+    parsed = yaml.load(raw);
+  } catch (e) {
+    throw new Error(`Failed to parse ${SETTINGS_FILE}: ${e.message}`);
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) return {};
+
+  if (parsed.layout !== undefined) {
+    parsed.layout = normalizeLayout(parsed.layout);
+  }
+  return parsed;
+}
+
+export async function writeSettingsModel(model) {
+  if (!model || typeof model !== "object" || Array.isArray(model)) {
+    throw new Error("Settings must be a YAML mapping (key: value)");
+  }
+
+  const file = settingsPath();
+
+  try {
+    const prev = await fs.readFile(file, "utf8");
+    await fs.writeFile(`${file}.bak`, prev, "utf8");
+  } catch (e) {
+    // no previous file yet
+  }
+
+  const { layout, ...rest } = model;
+  const cleanedLayout = pruneLayout(normalizeLayout(layout));
+  const next = orderSettings({
+    ...pruneEmpty(rest),
+    ...(cleanedLayout ? { layout: cleanedLayout } : {}),
+  });
+  const yamlStr = yaml.dump(next, { lineWidth: -1, noRefs: true, sortKeys: false });
+  const tmp = `${file}.tmp`;
+  await fs.writeFile(tmp, `---\n${yamlStr}`, "utf8");
+  await fs.rename(tmp, file);
+  return next;
+}

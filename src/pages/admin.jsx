@@ -276,7 +276,7 @@ const SERVICE_FIELDS = [
   { key: "description", label: "描述", placeholder: "群晖外网访问" },
   { key: "server", label: "Docker 主机", placeholder: "my-docker（可空）" },
   { key: "container", label: "容器名", placeholder: "portainer（可空）" },
-  { key: "ping", label: "健康检查地址/IP", placeholder: "http://192.168.99.3:5000（可空）" },
+  { key: "ping", label: "健康检查地址/IP", placeholder: "http://192.168.1.100:5000（可空）" },
 ];
 
 function ServicesPanel() {
@@ -489,7 +489,7 @@ function ServicesPanel() {
               className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700 font-mono text-xs"
               rows={6}
               value={widgetText}
-              placeholder={"type: qbittorrent\nurl: http://192.168.99.3:8080\nusername: admin\npassword: fugang520123"}
+              placeholder={"type: qbittorrent\nurl: http://192.168.1.100:8080\nusername: your-username\npassword: your-password"}
               onChange={(e) => setWidgetText(e.target.value)}
             />
           </div>
@@ -696,6 +696,594 @@ function SitePanel() {
   );
 }
 
+// ----------------------------- 全局设置 标签 -----------------------------
+
+const THEME_COLORS = [
+  "slate", "gray", "zinc", "neutral", "stone", "red", "orange", "amber", "yellow", "lime",
+  "green", "emerald", "teal", "cyan", "sky", "blue", "indigo", "violet", "purple", "fuchsia",
+  "pink", "rose", "white",
+];
+
+const LANGUAGES = [
+  ["zh-Hans", "简体中文"],
+  ["zh-Hant", "繁體中文"],
+  ["en", "English"],
+  ["ja", "日本語"],
+  ["ko", "한국어"],
+  ["de", "Deutsch"],
+  ["fr", "Français"],
+  ["es", "Español"],
+  ["ru", "Русский"],
+];
+
+const BLUR_LEVELS = ["none", "xs", "sm", "md", "lg", "xl", "2xl", "3xl"];
+
+const SETTING_TEXTS = [
+  { key: "title", label: "站点标题", placeholder: "我的导航页", hint: "浏览器标签页 + 页面顶部标题" },
+  { key: "favicon", label: "Favicon 图标 URL", placeholder: "https://example.com/favicon.png" },
+  { key: "base", label: "Base URL（反代到子路径时才填）", placeholder: "留空即可" },
+];
+
+const SETTING_SELECTS = [
+  { key: "language", label: "界面语言", empty: "默认（English）", options: LANGUAGES },
+  { key: "theme", label: "明暗主题", empty: "允许用户自行切换", options: [["light", "浅色"], ["dark", "深色"]] },
+  { key: "color", label: "主题配色", empty: "允许用户自行切换", options: THEME_COLORS.map((c) => [c, c]) },
+  {
+    key: "headerStyle",
+    label: "页眉样式",
+    empty: "默认",
+    options: [
+      ["underlined", "underlined 下划线"],
+      ["boxed", "boxed 盒子"],
+      ["clean", "clean 简洁（隐藏搜索栏）"],
+      ["boxedWidgets", "boxedWidgets 组件盒子"],
+    ],
+  },
+  {
+    key: "target",
+    label: "链接打开方式",
+    empty: "默认（新标签页）",
+    options: [["_blank", "新标签页"], ["_self", "当前标签页"], ["_top", "顶层窗口"]],
+  },
+  { key: "iconStyle", label: "图标样式", empty: "默认", options: [["theme", "theme 主题着色"]] },
+  { key: "statusStyle", label: "状态指示样式", empty: "默认", options: [["dot", "dot 圆点"], ["basic", "basic 文字"]] },
+  { key: "cardBlur", label: "卡片毛玻璃", empty: "不启用", options: BLUR_LEVELS.map((b) => [b, b]) },
+];
+
+const SETTING_BOOLS = [
+  { key: "hideVersion", label: "隐藏页脚版本号" },
+  { key: "disableUpdateCheck", label: "关闭更新检查" },
+  { key: "disableCollapse", label: "禁用分组折叠" },
+  { key: "fiveColumns", label: "允许五列布局" },
+  { key: "fullWidth", label: "全宽显示" },
+  { key: "useEqualHeights", label: "卡片等高" },
+  { key: "hideErrors", label: "隐藏组件错误提示" },
+  { key: "showStats", label: "默认展开组件统计" },
+];
+
+const SETTING_NUMBERS = [
+  { key: "maxGroupColumns", label: "分组最大列数", min: 1, max: 8, hint: "需 > 6 且在超宽屏下才生效" },
+];
+
+const BG_NUMBERS = [
+  { key: "brightness", label: "亮度 brightness", min: 0, max: 200, fallback: 100, hint: "100 = 原始亮度，越小越暗" },
+  { key: "opacity", label: "不透明度 opacity", min: 0, max: 100, fallback: 100, hint: "0 = 完全透明" },
+  { key: "saturate", label: "饱和度 saturate", min: 0, max: 200, fallback: 100, hint: "0 = 完全黑白" },
+  { key: "contrast", label: "对比度 contrast", min: 0, max: 200, fallback: 100, hint: "调低（70-80）更柔和" },
+  { key: "grayscale", label: "灰度 grayscale", min: 0, max: 100, fallback: 0, hint: "100 = 完全黑白" },
+  { key: "hueRotate", label: "色相旋转 hueRotate", min: 0, max: 360, fallback: 0, hint: "单位：度" },
+];
+
+const LAYOUT_KNOWN_KEYS = ["icon", "style", "columns", "header", "iconsOnly", "initiallyCollapsed"];
+
+const MANAGED_SETTING_KEYS = new Set([
+  ...SETTING_TEXTS.map((f) => f.key),
+  ...SETTING_SELECTS.map((f) => f.key),
+  ...SETTING_BOOLS.map((f) => f.key),
+  ...SETTING_NUMBERS.map((f) => f.key),
+  "background",
+  "layout",
+  "providers",
+]);
+
+const inputCls = "w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700";
+
+function SettingsPanel() {
+  const [fields, setFields] = useState({});
+  const [bg, setBg] = useState({ image: "", blur: "" });
+  const [bgExtra, setBgExtra] = useState({});
+  const [layoutRows, setLayoutRows] = useState([]);
+  const [providersText, setProvidersText] = useState("");
+  const [advancedText, setAdvancedText] = useState("");
+
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/admin/settings");
+      if (!res.ok) throw new Error("加载失败");
+      const data = await res.json();
+
+      const nextFields = {};
+      [...SETTING_TEXTS, ...SETTING_SELECTS].forEach((f) => {
+        nextFields[f.key] = data[f.key] ?? "";
+      });
+      SETTING_BOOLS.forEach((f) => {
+        nextFields[f.key] = Boolean(data[f.key]);
+      });
+      SETTING_NUMBERS.forEach((f) => {
+        nextFields[f.key] = data[f.key] ?? "";
+      });
+      setFields(nextFields);
+
+      // background 也允许写成一个纯字符串（老写法），统一成对象处理
+      const bgSrc = typeof data.background === "string" ? { image: data.background } : data.background || {};
+      const nextBg = { image: bgSrc.image ?? "", blur: bgSrc.blur ?? "" };
+      BG_NUMBERS.forEach((f) => {
+        nextBg[f.key] = bgSrc[f.key] ?? "";
+      });
+      setBg(nextBg);
+      const knownBg = new Set(["image", "blur", ...BG_NUMBERS.map((f) => f.key)]);
+      setBgExtra(Object.fromEntries(Object.entries(bgSrc).filter(([k]) => !knownBg.has(k))));
+
+      const layout = data.layout && typeof data.layout === "object" && !Array.isArray(data.layout) ? data.layout : {};
+      setLayoutRows(
+        Object.entries(layout).map(([name, opt]) => {
+          const o = opt && typeof opt === "object" && !Array.isArray(opt) ? opt : {};
+          return {
+            name,
+            icon: o.icon ?? "",
+            style: o.style ?? "",
+            columns: o.columns ?? "",
+            header: o.header === undefined ? "" : String(Boolean(o.header)),
+            iconsOnly: Boolean(o.iconsOnly),
+            initiallyCollapsed: Boolean(o.initiallyCollapsed),
+            extra: Object.fromEntries(Object.entries(o).filter(([k]) => !LAYOUT_KNOWN_KEYS.includes(k))),
+          };
+        }),
+      );
+
+      setProvidersText(
+        data.providers && typeof data.providers === "object" ? yaml.dump(data.providers, { lineWidth: -1 }) : "",
+      );
+
+      const rest = Object.fromEntries(Object.entries(data).filter(([k]) => !MANAGED_SETTING_KEYS.has(k)));
+      setAdvancedText(Object.keys(rest).length ? yaml.dump(rest, { lineWidth: -1 }) : "");
+
+      setError("");
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const setField = (key, value) => setFields((prev) => ({ ...prev, [key]: value }));
+  const setBgField = (key, value) => setBg((prev) => ({ ...prev, [key]: value }));
+
+  const updateRow = (idx, patch) =>
+    setLayoutRows((prev) => prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
+
+  const moveRow = (idx, delta) =>
+    setLayoutRows((prev) => {
+      const target = idx + delta;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[idx], next[target]] = [next[target], next[idx]];
+      return next;
+    });
+
+  const buildPayload = () => {
+    const advanced = advancedText.trim() ? yaml.load(advancedText) : {};
+    if (advanced && (typeof advanced !== "object" || Array.isArray(advanced))) {
+      throw new Error("「其他高级设置」必须是 key: value 形式的 YAML");
+    }
+    const payload = { ...(advanced || {}) };
+
+    [...SETTING_TEXTS, ...SETTING_SELECTS].forEach((f) => {
+      const v = String(fields[f.key] ?? "").trim();
+      if (v) payload[f.key] = v;
+      else delete payload[f.key];
+    });
+    SETTING_BOOLS.forEach((f) => {
+      if (fields[f.key]) payload[f.key] = true;
+      else delete payload[f.key];
+    });
+    SETTING_NUMBERS.forEach((f) => {
+      const v = String(fields[f.key] ?? "").trim();
+      if (v === "") {
+        delete payload[f.key];
+        return;
+      }
+      const n = Number(v);
+      if (Number.isNaN(n)) throw new Error(`${f.label} 必须是数字`);
+      payload[f.key] = n;
+    });
+
+    const background = { ...bgExtra };
+    if (String(bg.image ?? "").trim()) background.image = String(bg.image).trim();
+    if (String(bg.blur ?? "").trim()) background.blur = String(bg.blur).trim();
+    BG_NUMBERS.forEach((f) => {
+      const v = String(bg[f.key] ?? "").trim();
+      if (v === "") return;
+      const n = Number(v);
+      if (Number.isNaN(n)) throw new Error(`背景「${f.label}」必须是数字`);
+      background[f.key] = n;
+    });
+    if (Object.keys(background).length) payload.background = background;
+    else delete payload.background;
+
+    const layout = {};
+    layoutRows.forEach((row) => {
+      const name = String(row.name ?? "").trim();
+      if (!name) return;
+      const o = { ...row.extra };
+      if (String(row.icon ?? "").trim()) o.icon = String(row.icon).trim();
+      if (row.style) o.style = row.style;
+      const cols = String(row.columns ?? "").trim();
+      if (cols !== "") {
+        const n = Number(cols);
+        if (Number.isNaN(n)) throw new Error(`分组「${name}」的列数必须是数字`);
+        o.columns = n;
+      }
+      if (row.header === "true") o.header = true;
+      if (row.header === "false") o.header = false;
+      if (row.iconsOnly) o.iconsOnly = true;
+      if (row.initiallyCollapsed) o.initiallyCollapsed = true;
+      layout[name] = o;
+    });
+    if (Object.keys(layout).length) payload.layout = layout;
+    else delete payload.layout;
+
+    if (providersText.trim()) {
+      const p = yaml.load(providersText);
+      if (!p || typeof p !== "object" || Array.isArray(p)) {
+        throw new Error("「服务商 API Key」必须是 key: value 形式的 YAML");
+      }
+      payload.providers = p;
+    } else {
+      delete payload.providers;
+    }
+
+    return payload;
+  };
+
+  const save = async (e) => {
+    e.preventDefault();
+    setError("");
+    setNotice("");
+    setSaving(true);
+    try {
+      const payload = buildPayload();
+      const res = await fetch("/api/admin/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "保存失败");
+      }
+      const data = await res.json();
+      setNotice(
+        data.revalidated
+          ? `已于 ${new Date().toLocaleString()} 保存，首页已刷新`
+          : `已于 ${new Date().toLocaleString()} 保存（首页缓存未自动刷新，可手动刷新页面）`,
+      );
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) return <p className="text-sm opacity-60">加载中…</p>;
+
+  const card = "p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow";
+
+  return (
+    <form onSubmit={save} className="space-y-6">
+      <div className={card}>
+        <h2 className="font-semibold mb-3">基础设置</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {SETTING_TEXTS.map((f) => (
+            <div key={f.key}>
+              <label className="block text-xs mb-1">{f.label}</label>
+              <input
+                className={inputCls}
+                value={fields[f.key] ?? ""}
+                placeholder={f.placeholder}
+                onChange={(e) => setField(f.key, e.target.value)}
+              />
+              {f.hint && <p className="text-[11px] opacity-50 mt-1">{f.hint}</p>}
+            </div>
+          ))}
+          {SETTING_SELECTS.map((f) => {
+            const current = fields[f.key] ?? "";
+            const known = f.options.some(([v]) => v === current);
+            return (
+              <div key={f.key}>
+                <label className="block text-xs mb-1">{f.label}</label>
+                <select className={inputCls} value={current} onChange={(e) => setField(f.key, e.target.value)}>
+                  <option value="">{f.empty}</option>
+                  {/* 保留配置里已有但不在预设列表中的值，避免保存时被悄悄改掉 */}
+                  {current !== "" && !known && <option value={current}>{current}（当前值）</option>}
+                  {f.options.map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            );
+          })}
+          {SETTING_NUMBERS.map((f) => (
+            <div key={f.key}>
+              <label className="block text-xs mb-1">{f.label}</label>
+              <input
+                type="number"
+                min={f.min}
+                max={f.max}
+                className={inputCls}
+                value={fields[f.key] ?? ""}
+                placeholder="未设置"
+                onChange={(e) => setField(f.key, e.target.value)}
+              />
+              {f.hint && <p className="text-[11px] opacity-50 mt-1">{f.hint}</p>}
+            </div>
+          ))}
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+          {SETTING_BOOLS.map((f) => (
+            <label key={f.key} className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={Boolean(fields[f.key])}
+                onChange={(e) => setField(f.key, e.target.checked)}
+              />
+              {f.label}
+            </label>
+          ))}
+        </div>
+      </div>
+
+      <div className={card}>
+        <h2 className="font-semibold mb-3">背景设置</h2>
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs mb-1">背景图片地址</label>
+            <input
+              className={inputCls}
+              value={bg.image ?? ""}
+              placeholder="/images/bg.png 或 https://example.com/bg.jpg"
+              onChange={(e) => setBgField("image", e.target.value)}
+            />
+            <p className="text-[11px] opacity-50 mt-1">支持本地路径或网络 URL；留空则不使用背景图。</p>
+          </div>
+          <div>
+            <label className="block text-xs mb-1">模糊程度 blur</label>
+            <select className={inputCls} value={bg.blur ?? ""} onChange={(e) => setBgField("blur", e.target.value)}>
+              <option value="">不设置</option>
+              {BLUR_LEVELS.map((b) => (
+                <option key={b} value={b}>
+                  {b}
+                </option>
+              ))}
+            </select>
+          </div>
+          {BG_NUMBERS.map((f) => {
+            const value = bg[f.key] ?? "";
+            return (
+              <div key={f.key}>
+                <label className="block text-xs mb-1">{f.label}</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    className="flex-1"
+                    min={f.min}
+                    max={f.max}
+                    value={value === "" ? f.fallback : value}
+                    onChange={(e) => setBgField(f.key, e.target.value)}
+                  />
+                  <input
+                    type="number"
+                    className="w-24 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+                    min={f.min}
+                    max={f.max}
+                    value={value}
+                    placeholder="未设置"
+                    onChange={(e) => setBgField(f.key, e.target.value)}
+                  />
+                  <button
+                    type="button"
+                    className="text-xs opacity-60 hover:opacity-100 shrink-0"
+                    onClick={() => setBgField(f.key, "")}
+                  >
+                    清除
+                  </button>
+                </div>
+                <p className="text-[11px] opacity-50 mt-1">{f.hint}（留空表示不设置该效果）</p>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className={card}>
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="font-semibold">分组布局 layout</h2>
+          <button
+            type="button"
+            className="text-sm text-theme-600 dark:text-theme-400 hover:underline flex items-center gap-1"
+            onClick={() =>
+              setLayoutRows((prev) => [
+                ...prev,
+                { name: "", icon: "", style: "", columns: "", header: "", iconsOnly: false, initiallyCollapsed: false, extra: {} },
+              ])
+            }
+          >
+            <BiPlus /> 添加分组
+          </button>
+        </div>
+        <p className="text-[11px] opacity-50 mb-3">
+          分组名要和「服务 / 分组」「书签 / 链接」里的名称一致；此处的<b>先后顺序</b>决定首页的分组显示顺序。
+        </p>
+        <div className="space-y-3">
+          {layoutRows.length === 0 && <p className="text-sm opacity-60">还没有配置任何分组布局。</p>}
+          {layoutRows.map((row, idx) => (
+            // 分组可以重名/为空，用下标作为 key 是这里唯一稳定的选择
+            // eslint-disable-next-line react/no-array-index-key
+            <div key={idx} className="p-3 rounded border border-gray-200 dark:border-gray-700">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs mb-1">分组名称</label>
+                  <input
+                    className={inputCls}
+                    value={row.name}
+                    placeholder="服务器监控"
+                    onChange={(e) => updateRow(idx, { name: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1">图标 URL / 名称</label>
+                  <input
+                    className={inputCls}
+                    value={row.icon}
+                    placeholder="https://example.com/icon.png"
+                    onChange={(e) => updateRow(idx, { icon: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1">排列方式 style</label>
+                  <select className={inputCls} value={row.style} onChange={(e) => updateRow(idx, { style: e.target.value })}>
+                    <option value="">默认</option>
+                    <option value="row">row 横排</option>
+                    <option value="column">column 竖排</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs mb-1">列数 columns（style 为 row 时生效）</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={8}
+                    className={inputCls}
+                    value={row.columns}
+                    placeholder="未设置"
+                    onChange={(e) => updateRow(idx, { columns: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs mb-1">分组标题 header</label>
+                  <select className={inputCls} value={row.header} onChange={(e) => updateRow(idx, { header: e.target.value })}>
+                    <option value="">默认（显示）</option>
+                    <option value="true">显示</option>
+                    <option value="false">隐藏</option>
+                  </select>
+                </div>
+                <div className="flex items-end gap-4 text-sm">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={row.iconsOnly}
+                      onChange={(e) => updateRow(idx, { iconsOnly: e.target.checked })}
+                    />
+                    仅图标
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={row.initiallyCollapsed}
+                      onChange={(e) => updateRow(idx, { initiallyCollapsed: e.target.checked })}
+                    />
+                    默认折叠
+                  </label>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 mt-2 text-sm">
+                <button type="button" className="opacity-60 hover:opacity-100" onClick={() => moveRow(idx, -1)}>
+                  ↑ 上移
+                </button>
+                <button type="button" className="opacity-60 hover:opacity-100" onClick={() => moveRow(idx, 1)}>
+                  ↓ 下移
+                </button>
+                <button
+                  type="button"
+                  className="text-red-500 hover:underline flex items-center gap-1 ml-auto"
+                  onClick={() => setLayoutRows((prev) => prev.filter((_, i) => i !== idx))}
+                >
+                  <BiTrash /> 移除
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className={card}>
+        <h2 className="font-semibold mb-3">服务商 API Key（providers）</h2>
+        <textarea
+          className={`${inputCls} font-mono text-xs`}
+          rows={4}
+          value={providersText}
+          placeholder={"openweathermap: your-api-key\nweatherapi: your-api-key"}
+          onChange={(e) => setProvidersText(e.target.value)}
+        />
+        <p className="text-[11px] opacity-50 mt-1">
+          原始 YAML。这些密钥只在服务端使用，不会下发到首页。
+        </p>
+      </div>
+
+      <details className={card}>
+        <summary className="font-semibold cursor-pointer">其他高级设置（原始 YAML）</summary>
+        <textarea
+          className={`${inputCls} font-mono text-xs mt-3`}
+          rows={8}
+          value={advancedText}
+          placeholder={"quicklaunch:\n  searchDescriptions: true\n  hideInternetSearch: true"}
+          onChange={(e) => setAdvancedText(e.target.value)}
+        />
+        <p className="text-[11px] opacity-50 mt-1">
+          上面表单没有覆盖到的 settings.yaml 字段都会出现在这里，保存时原样写回，不会丢失。
+        </p>
+      </details>
+
+      {error && <p className="text-sm text-red-500">{error}</p>}
+      {notice && <p className="text-sm text-green-600 dark:text-green-400">{notice}</p>}
+
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={saving}
+          className="px-4 py-2 rounded bg-theme-500 text-white hover:bg-theme-600 disabled:opacity-50"
+        >
+          {saving ? "保存中…" : "保存设置"}
+        </button>
+        <button
+          type="button"
+          onClick={load}
+          className="px-4 py-2 rounded border border-gray-300 dark:border-gray-600"
+        >
+          放弃修改并重新加载
+        </button>
+      </div>
+
+      <p className="text-xs opacity-50">
+        改动会写回 config/settings.yaml，并自动保留一份 settings.yaml.bak。
+        <b>注意：保存后原文件里的 YAML 注释会丢失</b>（配置本身不受影响）。
+      </p>
+    </form>
+  );
+}
+
 // ----------------------------- 外壳 / 标签切换 -----------------------------
 
 export default function Admin() {
@@ -744,15 +1332,22 @@ export default function Admin() {
           >
             站点信息
           </button>
+          <button
+            onClick={() => setTab("settings")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium ${
+              tab === "settings"
+                ? "bg-theme-500 text-white"
+                : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+            }`}
+          >
+            全局设置
+          </button>
         </div>
 
-        {tab === "bookmarks" ? (
-          <BookmarksPanel />
-        ) : tab === "services" ? (
-          <ServicesPanel />
-        ) : (
-          <SitePanel />
-        )}
+        {tab === "bookmarks" && <BookmarksPanel />}
+        {tab === "services" && <ServicesPanel />}
+        {tab === "site" && <SitePanel />}
+        {tab === "settings" && <SettingsPanel />}
       </div>
     </div>
   );

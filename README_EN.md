@@ -45,9 +45,18 @@ Both `/admin` and `api/admin/*` are protected by `HOMEPAGE_AUTH_ENABLED`. **Note
 | `HOMEPAGE_AUTH_ENABLED=true` | enable auth |
 | `HOMEPAGE_AUTH_PASSWORD` | login password (single global password — the sign-in page only asks for a password, no username) |
 | `HOMEPAGE_AUTH_SECRET` | session secret (random string; changing it invalidates existing sessions) |
-| `HOMEPAGE_EXTERNAL_URL` | public base URL, required by next-auth, e.g. `http://192.168.99.147:3000` |
+| `HOMEPAGE_EXTERNAL_URL` | public base URL, required by next-auth, e.g. `http://192.168.1.100:3000` |
 
-The bundled `docker-compose.yml` already sets these 4 variables (sample password `fugang520123`), so `docker compose up -d` is enough. When using `docker run`, add the corresponding `-e` flags yourself.
+These variables come from a `.env` file in the repository root (**gitignored, never committed**). First-time setup:
+
+```bash
+cp .env.example .env   # then edit .env with your own password and base URL
+docker compose up -d
+```
+
+Generate `HOMEPAGE_AUTH_SECRET` with `openssl rand -base64 32`. When using `docker run`, pass the same variables as `-e` flags.
+
+> ⚠️ Never put real passwords in `docker-compose.yml`, the README, or any file tracked by Git.
 
 For OIDC / header auth, see the [homepage docs](https://gethomepage.dev/configs/settings/#auth).
 

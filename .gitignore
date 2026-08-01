@@ -32,6 +32,9 @@ yarn-error.log*
 
 # local env files
 .env*.local
+# deployment secrets (password / auth secret / internal URLs) — never commit
+.env
+!.env.example
 
 # vercel
 .vercel

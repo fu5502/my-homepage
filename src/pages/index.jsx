@@ -539,6 +539,38 @@ function Home({ initialSettings }) {
   );
 }
 
+// Tailwind's backdrop-blur scale, in pixels.
+const BACKDROP_BLUR_PX = {
+  none: 0,
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  "2xl": 40,
+  "3xl": 64,
+};
+
+// Upstream only maps blur/saturate/brightness onto Tailwind backdrop classes.
+// contrast/grayscale/hueRotate have no matching class, so when any of them is
+// configured we compose the entire filter chain inline instead.
+function buildBackdropFilter(bg) {
+  const parts = [];
+
+  if (bg.blur !== undefined) {
+    const level = typeof bg.blur === "string" ? bg.blur : "";
+    const px = level === "" ? BACKDROP_BLUR_PX.sm : (BACKDROP_BLUR_PX[level] ?? Number(level));
+    if (Number.isFinite(px) && px > 0) parts.push(`blur(${px}px)`);
+  }
+  if (bg.saturate !== undefined) parts.push(`saturate(${bg.saturate}%)`);
+  if (bg.brightness !== undefined) parts.push(`brightness(${bg.brightness}%)`);
+  if (bg.contrast !== undefined) parts.push(`contrast(${bg.contrast}%)`);
+  if (bg.grayscale !== undefined) parts.push(`grayscale(${bg.grayscale}%)`);
+  if (bg.hueRotate !== undefined) parts.push(`hue-rotate(${bg.hueRotate}deg)`);
+
+  return parts.join(" ");
+}
+
 export default function Wrapper({ initialSettings, fallback }) {
   const { theme } = useContext(ThemeContext);
   const { color } = useContext(ColorContext);
@@ -547,6 +579,7 @@ export default function Wrapper({ initialSettings, fallback }) {
   let backgroundBlur = false;
   let backgroundSaturate = false;
   let backgroundBrightness = false;
+  let backdropFilter = "";
   if (initialSettings?.background) {
     const bg = initialSettings.background;
     if (typeof bg === "object") {
@@ -554,9 +587,17 @@ export default function Wrapper({ initialSettings, fallback }) {
       if (bg.opacity !== undefined) {
         opacity = 1 - bg.opacity / 100;
       }
-      backgroundBlur = bg.blur !== undefined;
-      backgroundSaturate = bg.saturate !== undefined;
-      backgroundBrightness = bg.brightness !== undefined;
+      // An inline backdrop-filter replaces the class-based one entirely, so it
+      // is all-or-nothing: only switch over when a class-less filter is used.
+      const needsInlineFilter =
+        bg.contrast !== undefined || bg.grayscale !== undefined || bg.hueRotate !== undefined;
+      if (needsInlineFilter) {
+        backdropFilter = buildBackdropFilter(bg);
+      } else {
+        backgroundBlur = bg.blur !== undefined;
+        backgroundSaturate = bg.saturate !== undefined;
+        backgroundBrightness = bg.brightness !== undefined;
+      }
     } else {
       backgroundImage = bg;
     }
@@ -602,6 +643,7 @@ export default function Wrapper({ initialSettings, fallback }) {
         <div
           id="inner_wrapper"
           tabIndex="-1"
+          style={backdropFilter ? { backdropFilter, WebkitBackdropFilter: backdropFilter } : undefined}
           className={classNames(
             "w-full h-full overflow-auto",
             backgroundBlur &&
