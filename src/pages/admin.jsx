@@ -837,6 +837,29 @@ const BG_NUMBERS = [
   { key: "hueRotate", label: "色相旋转 hueRotate", min: 0, max: 360, fallback: 0, hint: "单位：度" },
 ];
 
+// 与首页 buildBackdropFilter 同义，用于后台实时预览框（输入为本地 bg 状态，空字符串表示未设置）。
+const PREVIEW_BLUR_PX = { none: 0, xs: 4, sm: 8, md: 12, lg: 16, xl: 24, "2xl": 40, "3xl": 64 };
+function buildBgPreviewFilter(bg) {
+  const parts = [];
+  const toNum = (v) => (v === "" || v === undefined ? undefined : Number(v));
+  const blurRaw = bg.blur;
+  if (blurRaw !== "" && blurRaw !== undefined && blurRaw !== null) {
+    const px = typeof blurRaw === "number" ? blurRaw : (PREVIEW_BLUR_PX[blurRaw] ?? Number(blurRaw));
+    if (Number.isFinite(px) && px > 0) parts.push(`blur(${px}px)`);
+  }
+  const sat = toNum(bg.saturate);
+  if (sat !== undefined) parts.push(`saturate(${sat}%)`);
+  const bri = toNum(bg.brightness);
+  if (bri !== undefined) parts.push(`brightness(${bri}%)`);
+  const con = toNum(bg.contrast);
+  if (con !== undefined) parts.push(`contrast(${con}%)`);
+  const gra = toNum(bg.grayscale);
+  if (gra !== undefined) parts.push(`grayscale(${gra}%)`);
+  const hue = toNum(bg.hueRotate);
+  if (hue !== undefined) parts.push(`hue-rotate(${hue}deg)`);
+  return parts.join(" ");
+}
+
 const LAYOUT_KNOWN_KEYS = ["icon", "style", "columns", "header", "iconsOnly", "initiallyCollapsed"];
 
 const MANAGED_SETTING_KEYS = new Set([
@@ -931,6 +954,11 @@ function SettingsPanel() {
 
   const setField = (key, value) => setFields((prev) => ({ ...prev, [key]: value }));
   const setBgField = (key, value) => setBg((prev) => ({ ...prev, [key]: value }));
+
+  // 实时预览：根据当前 bg 状态计算滤镜与遮罩透明度（拖动即更新，无需保存）
+  const bgPreviewFilter = buildBgPreviewFilter(bg);
+  const bgPreviewTint =
+    bg.opacity !== "" && bg.opacity !== undefined ? 1 - Number(bg.opacity) / 100 : 0;
 
   const updateRow = (idx, patch) =>
     setLayoutRows((prev) => prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)));
@@ -1122,6 +1150,16 @@ function SettingsPanel() {
       <div className={card}>
         <h2 className="font-semibold mb-3">背景设置</h2>
         <div className="space-y-3">
+          <div className="relative h-44 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700 bg-gray-900">
+            {bg.image ? (
+              <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url('${bg.image}')` }} />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center text-xs opacity-50">未设置背景图片，无法预览</div>
+            )}
+            <div className="absolute inset-0" style={{ background: `rgba(17,24,39,${bgPreviewTint})` }} />
+            <div className="absolute inset-0" style={{ backdropFilter: bgPreviewFilter, WebkitBackdropFilter: bgPreviewFilter }} />
+            <span className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-black/40 text-[11px] text-white">实时预览（拖动滑杆即时变化）</span>
+          </div>
           <div>
             <label className="block text-xs mb-1">背景图片地址</label>
             <input
@@ -1133,15 +1171,35 @@ function SettingsPanel() {
             <p className="text-[11px] opacity-50 mt-1">支持本地路径或网络 URL；留空则不使用背景图。</p>
           </div>
           <div>
-            <label className="block text-xs mb-1">模糊程度 blur</label>
-            <select className={inputCls} value={bg.blur ?? ""} onChange={(e) => setBgField("blur", e.target.value)}>
-              <option value="">不设置</option>
-              {BLUR_LEVELS.map((b) => (
-                <option key={b} value={b}>
-                  {b}
-                </option>
-              ))}
-            </select>
+            <label className="block text-xs mb-1">模糊程度 blur（px）</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="range"
+                className="flex-1"
+                min={0}
+                max={64}
+                step={1}
+                value={bg.blur === "" ? 0 : bg.blur}
+                onChange={(e) => setBgField("blur", e.target.value)}
+              />
+              <input
+                type="number"
+                className="w-24 rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
+                min={0}
+                max={64}
+                value={bg.blur}
+                placeholder="未设置"
+                onChange={(e) => setBgField("blur", e.target.value)}
+              />
+              <button
+                type="button"
+                className="text-xs opacity-60 hover:opacity-100 shrink-0"
+                onClick={() => setBgField("blur", "")}
+              >
+                清除
+              </button>
+            </div>
+            <p className="text-[11px] opacity-50 mt-1">0 = 不模糊（留空表示不设置）。</p>
           </div>
           {BG_NUMBERS.map((f) => {
             const value = bg[f.key] ?? "";

@@ -557,8 +557,7 @@ function buildBackdropFilter(bg) {
   const parts = [];
 
   if (bg.blur !== undefined) {
-    const level = typeof bg.blur === "string" ? bg.blur : "";
-    const px = level === "" ? BACKDROP_BLUR_PX.sm : (BACKDROP_BLUR_PX[level] ?? Number(level));
+    const px = typeof bg.blur === "number" ? bg.blur : (BACKDROP_BLUR_PX[bg.blur] ?? Number(bg.blur));
     if (Number.isFinite(px) && px > 0) parts.push(`blur(${px}px)`);
   }
   if (bg.saturate !== undefined) parts.push(`saturate(${bg.saturate}%)`);
