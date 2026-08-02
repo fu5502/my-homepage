@@ -1506,7 +1506,9 @@ function BackupPanel() {
     try {
       const res = await fetch("/api/admin/backup");
       if (!res.ok) throw new Error("导出失败");
-      const blob = await res.blob();
+      const text = await res.text();
+      const bundle = JSON.parse(text);
+      const blob = new Blob([text], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -1520,7 +1522,11 @@ function BackupPanel() {
       a.click();
       a.remove();
       URL.revokeObjectURL(url);
-      setNotice("已生成备份文件，浏览器开始下载");
+      const fileCount = bundle.files ? Object.keys(bundle.files).length : 0;
+      const envCount = bundle.env ? Object.keys(bundle.env).length : 0;
+      setNotice(
+        `已生成备份（含 ${fileCount} 个配置文件、${envCount} 项环境变量，包含登录密码），浏览器开始下载`,
+      );
     } catch (e) {
       setError(e.message);
     }
@@ -1557,9 +1563,13 @@ function BackupPanel() {
         throw new Error(d.error || "还原失败");
       }
       const d = await res.json();
-      setNotice(
-        `已还原：${d.files.join("、")}${d.revalidated ? "，首页已刷新" : "（首页缓存未刷新，可手动刷新）"}`,
-      );
+      let msg = `已还原：${d.files.join("、")}${d.revalidated ? "，首页已刷新" : "（首页缓存未刷新，可手动刷新）"}`;
+      if (d.env && d.env.written) {
+        msg += `；环境变量已写入 ${d.env.path}`;
+      } else if (d.env && d.env.note) {
+        msg += `；环境变量未能自动写入（${d.env.note}），请查看备份中的 env 字段并手动配置`;
+      }
+      setNotice(msg);
       setRestoreFile(null);
       const input = document.getElementById("restore-input");
       if (input) input.value = "";
@@ -1573,8 +1583,16 @@ function BackupPanel() {
   return (
     <div className="space-y-6">
       <p className="text-sm opacity-60">
-        将当前后台管理的全部配置文件打包导出，或从一个备份文件整体还原。包含：<b>书签</b>、<b>服务</b>、<b>站点信息</b>、<b>全局设置</b> 四个 YAML 文件。
+        将当前实例的<b>全部配置</b>打包导出，可一键整体还原到另一台机器。自动包含配置目录下的
+        <b>所有配置文件</b>（书签、服务、站点、设置、组件 widgets、自定义样式等）以及<b>运行环境变量</b>
+        （含登录密码与允许访问的域名），目标机无需再手动配置。
       </p>
+      <div className="flex items-center gap-2 rounded-lg bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 px-3 py-2 text-sm">
+        <BiErrorCircle className="shrink-0" />
+        <span>
+          安全提示：备份文件包含后台<b>登录密码</b>等敏感信息，请妥善保存，切勿上传到公开位置。
+        </span>
+      </div>
       {error && (
         <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-3 py-2 text-sm">
           <BiErrorCircle className="shrink-0" />
@@ -1636,7 +1654,7 @@ function BackupPanel() {
       )}
 
       <p className="text-xs opacity-50">
-        备份文件为纯 JSON 文本，可安全存储；还原只会覆盖备份中存在的配置文件，不会删除其它文件。
+        备份为纯 JSON 文本（本地背景图等二进制以 base64 内嵌）；还原只覆盖备份中存在的配置文件与环境变量，不会删除其它文件。还原到新机器时，若目标容器通过 env_file 读取 .env，则密码与域名自动生效，无需额外配置。
       </p>
     </div>
   );

@@ -11,13 +11,7 @@ function backupFilename(ts) {
 export default async function handler(req, res) {
   try {
     if (req.method === "GET") {
-      const files = await readAllConfigs();
-      const bundle = {
-        app: "my-homepage",
-        version: 1,
-        exportedAt: new Date().toISOString(),
-        files,
-      };
+      const bundle = await readAllConfigs();
       const body = JSON.stringify(bundle, null, 2);
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader("Content-Disposition", `attachment; filename="${backupFilename(Date.now())}"`);
@@ -29,10 +23,14 @@ export default async function handler(req, res) {
       if (!body || typeof body !== "object" || Array.isArray(body)) {
         return res.status(400).json({ error: "请求体必须是一个对象" });
       }
-      if (!body.files || typeof body.files !== "object" || Array.isArray(body.files)) {
+      const input =
+        body.files && typeof body.files === "object" && !Array.isArray(body.files)
+          ? body.files
+          : body;
+      if (!input || typeof input !== "object" || Array.isArray(input)) {
         return res.status(400).json({ error: "备份文件缺少 files 字段或格式不正确" });
       }
-      const written = await writeAllConfigs(body.files);
+      const result = await writeAllConfigs(body);
 
       // The dashboard is statically generated (getStaticProps), so restored
       // settings only show up after the page is regenerated.
@@ -44,8 +42,16 @@ export default async function handler(req, res) {
         console.warn("backup restored but revalidate failed: %s", e.message);
       }
 
-      const names = Object.keys(body.files).filter((k) => typeof body.files[k] === "string");
-      return res.status(200).json({ written, revalidated, files: names });
+      const names = Object.keys(input).filter((k) => {
+        const v = input[k];
+        return typeof v === "string" || (v && typeof v === "object" && "content" in v);
+      });
+      return res.status(200).json({
+        written: result.written,
+        env: result.env,
+        revalidated,
+        files: names,
+      });
     }
 
     return res.status(405).json({ error: "Method not allowed" });

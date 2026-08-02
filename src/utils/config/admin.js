@@ -522,54 +522,134 @@ export async function writeSettingsModel(model) {
 }
 
 // ---------------------------------------------------------------------------
-// Backup & restore — bundle every admin-managed config file into a single
-// JSON payload and write it back. Files are stored as their raw on-disk text
-// (read before any model transform) so a restore is byte-faithful and
-// survives comments/unknown keys that the model-based writers would drop.
+// Backup & restore — produce a complete, portable snapshot of the running
+// instance so it can be restored onto a fresh machine with no extra config.
+//
+// The bundle contains:
+//   1. Every user config file in CONF_DIR — auto-discovered (NOT a fixed
+//      list), so nothing is ever missed: bookmarks/services/site/settings
+//      plus widgets/docker/custom.css/custom.js and any future file.
+//      Binary assets (e.g. a locally uploaded background image) are included
+//      as base64 so they travel with the backup too.
+//   2. A captured snapshot of the runtime environment (HOMEPAGE_* / NEXTAUTH_*),
+//      including the login password and allowed hosts, so the same credentials
+//      carry over to the restore target without re-typing anything.
 // ---------------------------------------------------------------------------
 
-// Only these config files participate in backup/restore. The whitelist keeps
-// a malicious or hand-edited payload from writing anything outside CONF_DIR.
-export const BACKUP_FILES = ["bookmarks.yaml", "services.yaml", "site.yaml", "settings.yaml"];
+const BACKUP_TEXT_EXT = new Set([
+  ".yaml", ".yml", ".css", ".js", ".json", ".txt", ".conf", ".md", ".toml", ".ini", ".env",
+]);
+const BACKUP_BIN_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp"]);
+const ENV_KEY_PREFIXES = ["HOMEPAGE_", "NEXTAUTH_"];
 
-export async function readAllConfigs() {
-  const out = {};
-  for (const name of BACKUP_FILES) {
-    try {
-      out[name] = await fs.readFile(path.join(CONF_DIR, name), "utf8");
-    } catch (e) {
-      // file not present — omit from the bundle so restore leaves it untouched
-    }
-  }
-  return out;
+// Only accept plain filenames with a known extension; reject path traversal
+// and dotfiles (so .bak/.tmp/.DS_Store never leak in or get written).
+function isBackupFile(name) {
+  if (!name || typeof name !== "string" || /[\\/]/.test(name)) return false;
+  if (name.startsWith(".")) return false;
+  const ext = path.extname(name).toLowerCase();
+  return BACKUP_TEXT_EXT.has(ext) || BACKUP_BIN_EXT.has(ext);
 }
 
-// Write raw file contents back. Only whitelisted names are accepted; every
-// file is backed up to `<name>.bak` and written atomically before the next
-// one is touched, so a failure mid-restore never corrupts more than needed.
-export async function writeAllConfigs(files) {
-  if (!files || typeof files !== "object" || Array.isArray(files)) {
+function captureEnv() {
+  const env = {};
+  for (const [k, v] of Object.entries(process.env)) {
+    if (ENV_KEY_PREFIXES.some((p) => k.startsWith(p)) && v != null) env[k] = String(v);
+  }
+  return env;
+}
+
+export async function readAllConfigs() {
+  const files = {};
+  let entries = [];
+  try {
+    entries = await fs.readdir(CONF_DIR, { withFileTypes: true });
+  } catch (e) {
+    entries = [];
+  }
+  for (const e of entries) {
+    if (!e.isFile()) continue;
+    if (!isBackupFile(e.name)) continue;
+    const file = path.join(CONF_DIR, e.name);
+    const buf = await fs.readFile(file);
+    const ext = path.extname(e.name).toLowerCase();
+    if (BACKUP_BIN_EXT.has(ext)) {
+      files[e.name] = { content: buf.toString("base64"), encoding: "base64" };
+    } else {
+      files[e.name] = { content: buf.toString("utf8"), encoding: "utf8" };
+    }
+  }
+  return {
+    app: "my-homepage",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    env: captureEnv(),
+    files,
+  };
+}
+
+// Accepts both the new bundle ({ files, env }) and the legacy flat map
+// ({ "bookmarks.yaml": "..." }) for backward compatibility.
+export async function writeAllConfigs(bundle) {
+  const input =
+    bundle && bundle.files && typeof bundle.files === "object" && !Array.isArray(bundle.files)
+      ? bundle.files
+      : bundle; // legacy: the body itself is the files map
+
+  if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new Error("备份格式不正确");
   }
+
   const written = [];
-  for (const name of BACKUP_FILES) {
-    if (!(name in files)) continue; // only restore files the backup actually contains
-    const content = files[name];
-    if (typeof content !== "string") continue;
+  for (const [name, entry] of Object.entries(input)) {
+    if (!isBackupFile(name)) continue;
+    let buf;
+    if (entry && typeof entry === "object" && "content" in entry) {
+      buf =
+        entry.encoding === "base64"
+          ? Buffer.from(entry.content, "base64")
+          : Buffer.from(String(entry.content), "utf8");
+    } else if (typeof entry === "string") {
+      buf = Buffer.from(entry, "utf8");
+    } else {
+      continue;
+    }
     const file = path.join(CONF_DIR, name);
     try {
-      const prev = await fs.readFile(file, "utf8");
-      await fs.writeFile(`${file}.bak`, prev, "utf8");
+      const prev = await fs.readFile(file);
+      await fs.writeFile(`${file}.bak`, prev);
     } catch (e) {
       // no previous file — first time this config exists
     }
     const tmp = `${file}.tmp`;
-    await fs.writeFile(tmp, content, "utf8");
+    await fs.writeFile(tmp, buf);
     await fs.rename(tmp, file);
     written.push(name);
   }
-  if (written.length === 0) {
+
+  // Persist the captured environment so credentials / allowed-hosts carry
+  // over. Written into CONF_DIR/.env; if the target container reads its env
+  // from that file (env_file), no further configuration is needed.
+  let envResult = { written: false, path: null, note: null };
+  const env = bundle && bundle.env;
+  if (env && typeof env === "object" && Object.keys(env).length) {
+    const envPath = path.join(CONF_DIR, ".env");
+    const content =
+      "# Restored from my-homepage backup — merge into your container environment\n" +
+      Object.entries(env)
+        .map(([k, v]) => `${k}=${v}`)
+        .join("\n") +
+      "\n";
+    try {
+      await fs.writeFile(envPath, content, "utf8");
+      envResult = { written: true, path: envPath, note: null };
+    } catch (e) {
+      envResult = { written: false, path: null, note: e.message };
+    }
+  }
+
+  if (written.length === 0 && !envResult.written) {
     throw new Error("备份里没有任何可还原的配置文件");
   }
-  return written;
+  return { written, env: envResult };
 }
