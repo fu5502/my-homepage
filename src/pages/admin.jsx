@@ -434,7 +434,7 @@ const SERVICE_FIELDS = [
     key: "href",
     label: "跳转 URL",
     required: true,
-    placeholder: "https://zyweb.top:5001/",
+    placeholder: "https://nas.example.com:5001/",
   },
   { key: "icon", label: "图标 URL", placeholder: "https://.../icon.png" },
   { key: "description", label: "描述", placeholder: "群晖外网访问" },
@@ -984,7 +984,7 @@ function SitePanel() {
               className="w-full rounded border-gray-300 dark:border-gray-600 dark:bg-gray-700"
               rows={3}
               value={copyright}
-              placeholder="© 2026 fugang. 保留所有权利。"
+              placeholder="© 2026 Your Name. 保留所有权利。"
               onChange={(e) => setCopyright(e.target.value)}
             />
             <p className="text-[11px] opacity-50 mt-1">
