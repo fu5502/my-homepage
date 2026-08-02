@@ -522,41 +522,33 @@ export async function writeSettingsModel(model) {
 }
 
 // ---------------------------------------------------------------------------
-// Backup & restore — produce a complete, portable snapshot of the running
-// instance so it can be restored onto a fresh machine with no extra config.
+// Backup & restore — produce a complete, portable snapshot of the user's
+// content so it can be restored onto another machine with no content loss.
 //
-// The bundle contains:
-//   1. Every user config file in CONF_DIR — auto-discovered (NOT a fixed
-//      list), so nothing is ever missed: bookmarks/services/site/settings
-//      plus widgets/docker/custom.css/custom.js and any future file.
-//      Binary assets (e.g. a locally uploaded background image) are included
-//      as base64 so they travel with the backup too.
-//   2. A captured snapshot of the runtime environment (HOMEPAGE_* / NEXTAUTH_*),
-//      including the login password and allowed hosts, so the same credentials
-//      carry over to the restore target without re-typing anything.
+// The bundle contains every user config file in CONF_DIR — auto-discovered
+// (NOT a fixed list), so nothing is ever missed: bookmarks/services/site/
+// settings plus widgets/docker/custom.css/custom.js and any future file.
+// Binary assets (e.g. a locally uploaded background image) are included as
+// base64 so they travel with the backup too.
+//
+// NOTE: credentials and host configuration (password, ALLOWED_HOSTS, etc.)
+// are intentionally NOT part of the backup — they are environment-specific
+// and may differ between machines; restoring them can break access on the
+// target host. Keep those in the target machine's own deployment config.
 // ---------------------------------------------------------------------------
 
 const BACKUP_TEXT_EXT = new Set([
-  ".yaml", ".yml", ".css", ".js", ".json", ".txt", ".conf", ".md", ".toml", ".ini", ".env",
+  ".yaml", ".yml", ".css", ".js", ".json", ".txt", ".conf", ".md", ".toml", ".ini",
 ]);
 const BACKUP_BIN_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp"]);
-const ENV_KEY_PREFIXES = ["HOMEPAGE_", "NEXTAUTH_"];
 
 // Only accept plain filenames with a known extension; reject path traversal
-// and dotfiles (so .bak/.tmp/.DS_Store never leak in or get written).
+// and dotfiles (so .bak/.tmp/.env/.DS_Store never leak in or get written).
 function isBackupFile(name) {
   if (!name || typeof name !== "string" || /[\\/]/.test(name)) return false;
   if (name.startsWith(".")) return false;
   const ext = path.extname(name).toLowerCase();
   return BACKUP_TEXT_EXT.has(ext) || BACKUP_BIN_EXT.has(ext);
-}
-
-function captureEnv() {
-  const env = {};
-  for (const [k, v] of Object.entries(process.env)) {
-    if (ENV_KEY_PREFIXES.some((p) => k.startsWith(p)) && v != null) env[k] = String(v);
-  }
-  return env;
 }
 
 export async function readAllConfigs() {
@@ -583,7 +575,6 @@ export async function readAllConfigs() {
     app: "my-homepage",
     version: 2,
     exportedAt: new Date().toISOString(),
-    env: captureEnv(),
     files,
   };
 }
@@ -627,29 +618,8 @@ export async function writeAllConfigs(bundle) {
     written.push(name);
   }
 
-  // Persist the captured environment so credentials / allowed-hosts carry
-  // over. Written into CONF_DIR/.env; if the target container reads its env
-  // from that file (env_file), no further configuration is needed.
-  let envResult = { written: false, path: null, note: null };
-  const env = bundle && bundle.env;
-  if (env && typeof env === "object" && Object.keys(env).length) {
-    const envPath = path.join(CONF_DIR, ".env");
-    const content =
-      "# Restored from my-homepage backup — merge into your container environment\n" +
-      Object.entries(env)
-        .map(([k, v]) => `${k}=${v}`)
-        .join("\n") +
-      "\n";
-    try {
-      await fs.writeFile(envPath, content, "utf8");
-      envResult = { written: true, path: envPath, note: null };
-    } catch (e) {
-      envResult = { written: false, path: null, note: e.message };
-    }
-  }
-
-  if (written.length === 0 && !envResult.written) {
+  if (written.length === 0) {
     throw new Error("备份里没有任何可还原的配置文件");
   }
-  return { written, env: envResult };
+  return { written };
 }

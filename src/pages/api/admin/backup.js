@@ -48,7 +48,6 @@ export default async function handler(req, res) {
       });
       return res.status(200).json({
         written: result.written,
-        env: result.env,
         revalidated,
         files: names,
       });
