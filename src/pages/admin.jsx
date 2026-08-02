@@ -496,11 +496,11 @@ function ServicesPanel() {
     const [moved] = arr.splice(from, 1);
     arr.splice(to, 0, moved);
     setGroups((prev) =>
-      prev.map((g) => (g.name === groupName ? { ...g, services: arr } : g))
+      prev.map((g) => (g.name === groupName ? { ...g, services: arr } : g)),
     );
     saveServiceOrder(
       groupName,
-      arr.map((s) => s.name)
+      arr.map((s) => s.name),
     );
   };
 
@@ -657,12 +657,12 @@ function ServicesPanel() {
         typeof svc.widget === "object" &&
         Object.keys(svc.widget).length
         ? yaml.dump(svc.widget, { lineWidth: -1 })
-        : ""
+        : "",
     );
     setOptionsText(
       svc.options && Array.isArray(svc.options) && svc.options.length
         ? yaml.dump(svc.options, { lineWidth: -1 })
-        : ""
+        : "",
     );
     if (typeof window !== "undefined")
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1323,8 +1323,8 @@ function SettingsPanel() {
       ]);
       setBgExtra(
         Object.fromEntries(
-          Object.entries(bgSrc).filter(([k]) => !knownBg.has(k))
-        )
+          Object.entries(bgSrc).filter(([k]) => !knownBg.has(k)),
+        ),
       );
 
       const layout =
@@ -1346,23 +1346,23 @@ function SettingsPanel() {
             iconsOnly: Boolean(o.iconsOnly),
             initiallyCollapsed: Boolean(o.initiallyCollapsed),
             extra: Object.fromEntries(
-              Object.entries(o).filter(([k]) => !LAYOUT_KNOWN_KEYS.includes(k))
+              Object.entries(o).filter(([k]) => !LAYOUT_KNOWN_KEYS.includes(k)),
             ),
           };
-        })
+        }),
       );
 
       setProvidersText(
         data.providers && typeof data.providers === "object"
           ? yaml.dump(data.providers, { lineWidth: -1 })
-          : ""
+          : "",
       );
 
       const rest = Object.fromEntries(
-        Object.entries(data).filter(([k]) => !MANAGED_SETTING_KEYS.has(k))
+        Object.entries(data).filter(([k]) => !MANAGED_SETTING_KEYS.has(k)),
       );
       setAdvancedText(
-        Object.keys(rest).length ? yaml.dump(rest, { lineWidth: -1 }) : ""
+        Object.keys(rest).length ? yaml.dump(rest, { lineWidth: -1 }) : "",
       );
 
       setError("");
@@ -1391,7 +1391,7 @@ function SettingsPanel() {
 
   const updateRow = (idx, patch) =>
     setLayoutRows((prev) =>
-      prev.map((row, i) => (i === idx ? { ...row, ...patch } : row))
+      prev.map((row, i) => (i === idx ? { ...row, ...patch } : row)),
     );
 
   const moveRow = (idx, delta) =>
@@ -1499,7 +1499,7 @@ function SettingsPanel() {
       setNotice(
         data.revalidated
           ? `已于 ${new Date().toLocaleString()} 保存，首页已刷新`
-          : `已于 ${new Date().toLocaleString()} 保存（首页缓存未自动刷新，可手动刷新页面）`
+          : `已于 ${new Date().toLocaleString()} 保存（首页缓存未自动刷新，可手动刷新页面）`,
       );
     } catch (e) {
       setError(e.message);

@@ -4,7 +4,7 @@ function backupFilename(ts) {
   const d = new Date(ts);
   const p = (n) => String(n).padStart(2, "0");
   return `my-homepage-backup-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(
-    d.getHours()
+    d.getHours(),
   )}${p(d.getMinutes())}${p(d.getSeconds())}.json`;
 }
 
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${backupFilename(Date.now())}"`
+        `attachment; filename="${backupFilename(Date.now())}"`,
       );
       return res.status(200).send(body);
     }

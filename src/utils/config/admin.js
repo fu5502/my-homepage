@@ -136,7 +136,7 @@ export async function deleteBookmark({ group, name }) {
   const g = model.find((x) => x.name === group);
   if (g) g.bookmarks = g.bookmarks.filter((b) => b.name !== name);
   const cleaned = model.filter((x) =>
-    x.name === group ? g && g.bookmarks.length > 0 : true
+    x.name === group ? g && g.bookmarks.length > 0 : true,
   );
   await writeBookmarksModel(cleaned);
   return cleaned;
@@ -296,7 +296,7 @@ export async function addService({
       ping,
       widget,
       options,
-    })
+    }),
   );
   await writeServicesModel(model);
   return model;
@@ -338,7 +338,7 @@ export async function updateService({
       ping,
       widget,
       options,
-    })
+    }),
   );
   await writeServicesModel(model);
   return model;
@@ -349,7 +349,7 @@ export async function deleteService({ group, name }) {
   const g = model.find((x) => x.name === group);
   if (g) g.services = g.services.filter((s) => s.name !== name);
   const cleaned = model.filter((x) =>
-    x.name === group ? g && g.services.length > 0 : true
+    x.name === group ? g && g.services.length > 0 : true,
   );
   await writeServicesModel(cleaned);
   return cleaned;
