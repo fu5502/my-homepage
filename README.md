@@ -40,12 +40,12 @@ docker compose up -d
 
 后台管理 `/admin` 与 `api/admin/*` 默认被 `HOMEPAGE_AUTH_ENABLED` 保护。**注意：本版本 homepage 的密码登录走环境变量，而不是 `settings.yaml` 的 `auth.users`**，必须同时具备以下 4 个环境变量，next-auth 才会注册「密码」登录方式：
 
-| 变量 | 作用 |
-| --- | --- |
-| `HOMEPAGE_AUTH_ENABLED=true` | 开启鉴权 |
-| `HOMEPAGE_AUTH_PASSWORD` | 登录密码（单一全局密码，登录页只填密码、无需用户名） |
-| `HOMEPAGE_AUTH_SECRET` | 会话密钥（随机串，改了会让已登录会话失效） |
-| `HOMEPAGE_EXTERNAL_URL` | 外部访问地址，next-auth 必填，例如 `http://192.168.1.100:3000` |
+| 变量                         | 作用                                                           |
+| ---------------------------- | -------------------------------------------------------------- |
+| `HOMEPAGE_AUTH_ENABLED=true` | 开启鉴权                                                       |
+| `HOMEPAGE_AUTH_PASSWORD`     | 登录密码（单一全局密码，登录页只填密码、无需用户名）           |
+| `HOMEPAGE_AUTH_SECRET`       | 会话密钥（随机串，改了会让已登录会话失效）                     |
+| `HOMEPAGE_EXTERNAL_URL`      | 外部访问地址，next-auth 必填，例如 `http://192.168.1.100:3000` |
 
 这些变量由仓库根目录的 `.env` 提供（**已被 .gitignore 排除，不会提交到 Git**）。首次部署：
 
@@ -72,6 +72,7 @@ OIDC / Header 等其他鉴权方式见 [homepage 官方文档](https://gethomepa
 - **服务 / 分组**：管理 `services.yaml` 的分组与服务。
 
 **管理服务步骤：**
+
 1. 访问 `http://<设备IP>:3000/admin`（需先登录），切到「服务 / 分组」标签。
 2. 先新增一个分组（如「服务器监控」），或直接往已有分组里加服务。
 3. 填写服务公共字段：名称、跳转 URL、图标、描述、Docker 主机、容器名、健康检查地址、是否展开统计。

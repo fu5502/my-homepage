@@ -19,9 +19,9 @@ export default async function handler(req, res) {
       if (!oldGroup || !oldName || !group || !name || !href) {
         return res.status(400).json({ error: "oldGroup, oldName, group, name and href are required" });
       }
-      return res.status(200).json(
-        await updateBookmark({ oldGroup, oldName, group, name, abbr, href, icon, description }),
-      );
+      return res
+        .status(200)
+        .json(await updateBookmark({ oldGroup, oldName, group, name, abbr, href, icon, description }));
     }
 
     if (req.method === "DELETE") {

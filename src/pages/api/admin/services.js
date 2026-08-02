@@ -1,10 +1,4 @@
-import {
-  addService,
-  deleteService,
-  readServicesModel,
-  reorderServices,
-  updateService,
-} from "utils/config/admin";
+import { addService, deleteService, readServicesModel, reorderServices, updateService } from "utils/config/admin";
 
 export default async function handler(req, res) {
   try {
@@ -20,7 +14,21 @@ export default async function handler(req, res) {
       }
       return res
         .status(200)
-        .json(await addService({ group, name, href, icon, description, server, container, showStats, ping, widget, options }));
+        .json(
+          await addService({
+            group,
+            name,
+            href,
+            icon,
+            description,
+            server,
+            container,
+            showStats,
+            ping,
+            widget,
+            options,
+          }),
+        );
     }
 
     if (req.method === "PUT") {

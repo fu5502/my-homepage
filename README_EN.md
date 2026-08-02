@@ -40,12 +40,12 @@ Then visit `http://<device-IP>:3000`.
 
 Both `/admin` and `api/admin/*` are protected by `HOMEPAGE_AUTH_ENABLED`. **Note: in this homepage version, password login is driven by environment variables, NOT the `auth.users` block in `settings.yaml`.** The following 4 variables must all be present for next-auth to register the "Password" provider:
 
-| Variable | Purpose |
-| --- | --- |
-| `HOMEPAGE_AUTH_ENABLED=true` | enable auth |
-| `HOMEPAGE_AUTH_PASSWORD` | login password (single global password — the sign-in page only asks for a password, no username) |
-| `HOMEPAGE_AUTH_SECRET` | session secret (random string; changing it invalidates existing sessions) |
-| `HOMEPAGE_EXTERNAL_URL` | public base URL, required by next-auth, e.g. `http://192.168.1.100:3000` |
+| Variable                     | Purpose                                                                                          |
+| ---------------------------- | ------------------------------------------------------------------------------------------------ |
+| `HOMEPAGE_AUTH_ENABLED=true` | enable auth                                                                                      |
+| `HOMEPAGE_AUTH_PASSWORD`     | login password (single global password — the sign-in page only asks for a password, no username) |
+| `HOMEPAGE_AUTH_SECRET`       | session secret (random string; changing it invalidates existing sessions)                        |
+| `HOMEPAGE_EXTERNAL_URL`      | public base URL, required by next-auth, e.g. `http://192.168.1.100:3000`                         |
 
 These variables come from a `.env` file in the repository root (**gitignored, never committed**). First-time setup:
 
