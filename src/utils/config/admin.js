@@ -520,3 +520,56 @@ export async function writeSettingsModel(model) {
   await fs.rename(tmp, file);
   return next;
 }
+
+// ---------------------------------------------------------------------------
+// Backup & restore — bundle every admin-managed config file into a single
+// JSON payload and write it back. Files are stored as their raw on-disk text
+// (read before any model transform) so a restore is byte-faithful and
+// survives comments/unknown keys that the model-based writers would drop.
+// ---------------------------------------------------------------------------
+
+// Only these config files participate in backup/restore. The whitelist keeps
+// a malicious or hand-edited payload from writing anything outside CONF_DIR.
+export const BACKUP_FILES = ["bookmarks.yaml", "services.yaml", "site.yaml", "settings.yaml"];
+
+export async function readAllConfigs() {
+  const out = {};
+  for (const name of BACKUP_FILES) {
+    try {
+      out[name] = await fs.readFile(path.join(CONF_DIR, name), "utf8");
+    } catch (e) {
+      // file not present — omit from the bundle so restore leaves it untouched
+    }
+  }
+  return out;
+}
+
+// Write raw file contents back. Only whitelisted names are accepted; every
+// file is backed up to `<name>.bak` and written atomically before the next
+// one is touched, so a failure mid-restore never corrupts more than needed.
+export async function writeAllConfigs(files) {
+  if (!files || typeof files !== "object" || Array.isArray(files)) {
+    throw new Error("备份格式不正确");
+  }
+  const written = [];
+  for (const name of BACKUP_FILES) {
+    if (!(name in files)) continue; // only restore files the backup actually contains
+    const content = files[name];
+    if (typeof content !== "string") continue;
+    const file = path.join(CONF_DIR, name);
+    try {
+      const prev = await fs.readFile(file, "utf8");
+      await fs.writeFile(`${file}.bak`, prev, "utf8");
+    } catch (e) {
+      // no previous file — first time this config exists
+    }
+    const tmp = `${file}.tmp`;
+    await fs.writeFile(tmp, content, "utf8");
+    await fs.rename(tmp, file);
+    written.push(name);
+  }
+  if (written.length === 0) {
+    throw new Error("备份里没有任何可还原的配置文件");
+  }
+  return written;
+}

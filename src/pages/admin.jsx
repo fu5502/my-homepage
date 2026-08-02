@@ -4,8 +4,8 @@ import dynamic from "next/dynamic";
 import { useCallback, useEffect, useState } from "react";
 import yaml from "js-yaml";
 import {
-  BiArrowBack, BiBook, BiCheckCircle, BiCog, BiChevronDown, BiChevronRight,
-  BiErrorCircle, BiGlobe, BiLogOut, BiMoveVertical, BiPencil, BiPlus, BiServer, BiSlider, BiTrash,
+  BiArchive, BiArrowBack, BiBook, BiCheckCircle, BiCog, BiChevronDown, BiChevronRight,
+  BiDownload, BiErrorCircle, BiGlobe, BiLogOut, BiMoveVertical, BiPencil, BiPlus, BiServer, BiSlider, BiTrash, BiUpload,
 } from "react-icons/bi";
 import { signOut } from "next-auth/react";
 
@@ -1490,6 +1490,158 @@ function SettingsPanel() {
   );
 }
 
+// ----------------------------- 数据备份 / 还原 标签 -----------------------------
+
+function BackupPanel() {
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [restoreFile, setRestoreFile] = useState(null);
+
+  const card = "p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow";
+
+  const exportBackup = async () => {
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch("/api/admin/backup");
+      if (!res.ok) throw new Error("导出失败");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      // 优先用服务端建议的文件名，否则退回到本地时间戳命名
+      const disp = res.headers.get("Content-Disposition") || "";
+      const m = disp.match(/filename="?([^";]+)"?/);
+      a.download = m
+        ? m[1]
+        : `my-homepage-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      setNotice("已生成备份文件，浏览器开始下载");
+    } catch (e) {
+      setError(e.message);
+    }
+  };
+
+  const onPick = (e) => {
+    const f = e.target.files && e.target.files[0];
+    setRestoreFile(f || null);
+    setError("");
+    setNotice("");
+  };
+
+  const restore = async () => {
+    if (!restoreFile) {
+      setError("请先选择一个备份文件");
+      return;
+    }
+    setError("");
+    setNotice("");
+    setBusy(true);
+    try {
+      const text = await restoreFile.text();
+      const data = JSON.parse(text);
+      if (!data || typeof data !== "object" || !data.files || typeof data.files !== "object") {
+        throw new Error("文件不是有效的备份（缺少 files 字段）");
+      }
+      const res = await fetch("/api/admin/backup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ files: data.files }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || "还原失败");
+      }
+      const d = await res.json();
+      setNotice(
+        `已还原：${d.files.join("、")}${d.revalidated ? "，首页已刷新" : "（首页缓存未刷新，可手动刷新）"}`,
+      );
+      setRestoreFile(null);
+      const input = document.getElementById("restore-input");
+      if (input) input.value = "";
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <p className="text-sm opacity-60">
+        将当前后台管理的全部配置文件打包导出，或从一个备份文件整体还原。包含：<b>书签</b>、<b>服务</b>、<b>站点信息</b>、<b>全局设置</b> 四个 YAML 文件。
+      </p>
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-3 py-2 text-sm">
+          <BiErrorCircle className="shrink-0" />
+          <span>{error}</span>
+        </div>
+      )}
+
+      <div className={card}>
+        <h2 className="font-semibold mb-3">导出备份</h2>
+        <p className="text-sm opacity-60 mb-3">
+          把当前所有配置打包成一个 .json 文件下载到本地，便于迁移或灾难恢复。
+        </p>
+        <button
+          type="button"
+          onClick={exportBackup}
+          className="px-4 py-2 rounded bg-theme-500 text-white hover:bg-theme-600 flex items-center gap-2"
+        >
+          <BiDownload /> 导出备份文件
+        </button>
+      </div>
+
+      <div className={card}>
+        <h2 className="font-semibold mb-3">从备份还原</h2>
+        <p className="text-sm opacity-60 mb-3">
+          选择一个之前导出的备份文件，整体覆盖当前配置。<b>还原前会自动为现有文件保留 .bak 备份</b>，可随时手动回退。
+        </p>
+        <div className="flex flex-wrap items-center gap-3">
+          <input
+            id="restore-input"
+            type="file"
+            accept=".json,application/json"
+            onChange={onPick}
+            className="text-sm"
+          />
+          <ConfirmButton
+            label={
+              <span className="flex items-center gap-1">
+                <BiUpload /> 还原
+              </span>
+            }
+            hint="将覆盖当前配置，确定？"
+            confirmText="确定还原"
+            className="px-4 py-2 rounded bg-amber-500 text-white hover:bg-amber-600 flex items-center gap-1"
+            onConfirm={restore}
+          />
+        </div>
+        {restoreFile && (
+          <p className="text-xs opacity-60 mt-2">
+            已选择：{restoreFile.name}（{Math.max(1, Math.round(restoreFile.size / 1024))} KB）
+          </p>
+        )}
+      </div>
+
+      {notice && (
+        <div className="flex items-center gap-2 rounded-lg bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-300 px-3 py-2 text-sm">
+          <BiCheckCircle className="shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
+
+      <p className="text-xs opacity-50">
+        备份文件为纯 JSON 文本，可安全存储；还原只会覆盖备份中存在的配置文件，不会删除其它文件。
+      </p>
+    </div>
+  );
+}
+
 // ----------------------------- 外壳 / 标签切换 -----------------------------
 
 export default function Admin() {
@@ -1568,12 +1720,23 @@ export default function Admin() {
           >
             <BiSlider /> 全局设置
           </button>
+          <button
+            onClick={() => setTab("backup")}
+            className={`px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-1 ${
+              tab === "backup"
+                ? "bg-theme-500 text-white"
+                : "bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700"
+            }`}
+          >
+            <BiArchive /> 数据备份
+          </button>
         </div>
 
         {tab === "bookmarks" && <BookmarksPanel />}
         {tab === "services" && <ServicesPanel />}
         {tab === "site" && <SitePanel />}
         {tab === "settings" && <SettingsPanel />}
+        {tab === "backup" && <BackupPanel />}
 
         <div
           id="admin-footer"
