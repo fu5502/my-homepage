@@ -38,7 +38,9 @@ export async function readBookmarksModel() {
       name: groupName,
       bookmarks: entries.map((entry) => {
         const bmName = Object.keys(entry)[0];
-        const fields = Array.isArray(entry[bmName]) ? entry[bmName][0] || {} : {};
+        const fields = Array.isArray(entry[bmName])
+          ? entry[bmName][0] || {}
+          : {};
         return { name: bmName, ...fields };
       }),
     };
@@ -73,13 +75,24 @@ export async function writeBookmarksModel(model) {
     // no previous file yet
   }
 
-  const yamlStr = yaml.dump(modelToYaml(model), { lineWidth: -1, noRefs: true, sortKeys: false });
+  const yamlStr = yaml.dump(modelToYaml(model), {
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false,
+  });
   const tmp = `${file}.tmp`;
   await fs.writeFile(tmp, `---\n${yamlStr}`, "utf8");
   await fs.rename(tmp, file);
 }
 
-export async function addBookmark({ group, name, abbr, href, icon, description }) {
+export async function addBookmark({
+  group,
+  name,
+  abbr,
+  href,
+  icon,
+  description,
+}) {
   const model = await readBookmarksModel();
   let g = model.find((x) => x.name === group);
   if (!g) {
@@ -94,7 +107,16 @@ export async function addBookmark({ group, name, abbr, href, icon, description }
   return model;
 }
 
-export async function updateBookmark({ oldGroup, oldName, group, name, abbr, href, icon, description }) {
+export async function updateBookmark({
+  oldGroup,
+  oldName,
+  group,
+  name,
+  abbr,
+  href,
+  icon,
+  description,
+}) {
   const model = await readBookmarksModel();
   const og = model.find((x) => x.name === oldGroup);
   if (og) og.bookmarks = og.bookmarks.filter((b) => b.name !== oldName);
@@ -113,7 +135,9 @@ export async function deleteBookmark({ group, name }) {
   const model = await readBookmarksModel();
   const g = model.find((x) => x.name === group);
   if (g) g.bookmarks = g.bookmarks.filter((b) => b.name !== name);
-  const cleaned = model.filter((x) => (x.name === group ? g && g.bookmarks.length > 0 : true));
+  const cleaned = model.filter((x) =>
+    x.name === group ? g && g.bookmarks.length > 0 : true
+  );
   await writeBookmarksModel(cleaned);
   return cleaned;
 }
@@ -160,7 +184,13 @@ function cleanServiceFields(fields) {
   const out = {};
   Object.entries(fields || {}).forEach(([k, v]) => {
     if (v === undefined || v === null || v === "") return;
-    if (k === "widget" && v && typeof v === "object" && Object.keys(v).length === 0) return;
+    if (
+      k === "widget" &&
+      v &&
+      typeof v === "object" &&
+      Object.keys(v).length === 0
+    )
+      return;
     if (k === "options" && Array.isArray(v) && v.length === 0) return;
     out[k] = v;
   });
@@ -193,7 +223,10 @@ export async function readServicesModel() {
       name: groupName,
       services: entries.map((entry) => {
         const svcName = Object.keys(entry)[0];
-        const fields = entry[svcName] && typeof entry[svcName] === "object" ? entry[svcName] : {};
+        const fields =
+          entry[svcName] && typeof entry[svcName] === "object"
+            ? entry[svcName]
+            : {};
         return { name: svcName, ...fields };
       }),
     };
@@ -219,13 +252,29 @@ export async function writeServicesModel(model) {
     // no previous file yet
   }
 
-  const yamlStr = yaml.dump(servicesModelToYaml(model), { lineWidth: -1, noRefs: true, sortKeys: false });
+  const yamlStr = yaml.dump(servicesModelToYaml(model), {
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false,
+  });
   const tmp = `${file}.tmp`;
   await fs.writeFile(tmp, `---\n${yamlStr}`, "utf8");
   await fs.rename(tmp, file);
 }
 
-export async function addService({ group, name, icon, href, description, server, container, showStats, ping, widget, options }) {
+export async function addService({
+  group,
+  name,
+  icon,
+  href,
+  description,
+  server,
+  container,
+  showStats,
+  ping,
+  widget,
+  options,
+}) {
   const model = await readServicesModel();
   let g = model.find((x) => x.name === group);
   if (!g) {
@@ -235,12 +284,39 @@ export async function addService({ group, name, icon, href, description, server,
   if (g.services.some((s) => s.name === name)) {
     throw new Error(`Service "${name}" already exists in group "${group}"`);
   }
-  g.services.push(cleanServiceFields({ name, icon, href, description, server, container, showStats, ping, widget, options }));
+  g.services.push(
+    cleanServiceFields({
+      name,
+      icon,
+      href,
+      description,
+      server,
+      container,
+      showStats,
+      ping,
+      widget,
+      options,
+    })
+  );
   await writeServicesModel(model);
   return model;
 }
 
-export async function updateService({ oldGroup, oldName, group, name, icon, href, description, server, container, showStats, ping, widget, options }) {
+export async function updateService({
+  oldGroup,
+  oldName,
+  group,
+  name,
+  icon,
+  href,
+  description,
+  server,
+  container,
+  showStats,
+  ping,
+  widget,
+  options,
+}) {
   const model = await readServicesModel();
   const og = model.find((x) => x.name === oldGroup);
   if (og) og.services = og.services.filter((s) => s.name !== oldName);
@@ -250,7 +326,20 @@ export async function updateService({ oldGroup, oldName, group, name, icon, href
     g = { name: group, services: [] };
     model.push(g);
   }
-  g.services.push(cleanServiceFields({ name, icon, href, description, server, container, showStats, ping, widget, options }));
+  g.services.push(
+    cleanServiceFields({
+      name,
+      icon,
+      href,
+      description,
+      server,
+      container,
+      showStats,
+      ping,
+      widget,
+      options,
+    })
+  );
   await writeServicesModel(model);
   return model;
 }
@@ -259,7 +348,9 @@ export async function deleteService({ group, name }) {
   const model = await readServicesModel();
   const g = model.find((x) => x.name === group);
   if (g) g.services = g.services.filter((s) => s.name !== name);
-  const cleaned = model.filter((x) => (x.name === group ? g && g.services.length > 0 : true));
+  const cleaned = model.filter((x) =>
+    x.name === group ? g && g.services.length > 0 : true
+  );
   await writeServicesModel(cleaned);
   return cleaned;
 }
@@ -341,7 +432,8 @@ export async function readSiteModel() {
   } catch (e) {
     return { copyright: "", github: "" };
   }
-  if (!parsed || typeof parsed !== "object") return { copyright: "", github: "" };
+  if (!parsed || typeof parsed !== "object")
+    return { copyright: "", github: "" };
   return normalizeSite(parsed);
 }
 
@@ -355,8 +447,15 @@ export async function writeSiteModel({ copyright, github }) {
     // no previous file yet
   }
 
-  const data = normalizeSite({ copyright: copyright || "", github: github || "" });
-  const yamlStr = yaml.dump(data, { lineWidth: -1, noRefs: true, sortKeys: false });
+  const data = normalizeSite({
+    copyright: copyright || "",
+    github: github || "",
+  });
+  const yamlStr = yaml.dump(data, {
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false,
+  });
   const tmp = `${file}.tmp`;
   await fs.writeFile(tmp, `---\n${yamlStr}`, "utf8");
   await fs.rename(tmp, file);
@@ -458,11 +557,15 @@ function pruneEmpty(value) {
 // so an entry with no options still carries meaning and must not be pruned
 // away. Only the options inside each group get cleaned.
 function pruneLayout(layout) {
-  if (!layout || typeof layout !== "object" || Array.isArray(layout)) return undefined;
+  if (!layout || typeof layout !== "object" || Array.isArray(layout))
+    return undefined;
   const out = {};
   Object.entries(layout).forEach(([group, options]) => {
     if (!group) return;
-    out[group] = options && typeof options === "object" && !Array.isArray(options) ? pruneEmpty(options) : {};
+    out[group] =
+      options && typeof options === "object" && !Array.isArray(options)
+        ? pruneEmpty(options)
+        : {};
   });
   return Object.keys(out).length ? out : undefined;
 }
@@ -514,7 +617,11 @@ export async function writeSettingsModel(model) {
     ...pruneEmpty(rest),
     ...(cleanedLayout ? { layout: cleanedLayout } : {}),
   });
-  const yamlStr = yaml.dump(next, { lineWidth: -1, noRefs: true, sortKeys: false });
+  const yamlStr = yaml.dump(next, {
+    lineWidth: -1,
+    noRefs: true,
+    sortKeys: false,
+  });
   const tmp = `${file}.tmp`;
   await fs.writeFile(tmp, `---\n${yamlStr}`, "utf8");
   await fs.rename(tmp, file);
@@ -538,9 +645,27 @@ export async function writeSettingsModel(model) {
 // ---------------------------------------------------------------------------
 
 const BACKUP_TEXT_EXT = new Set([
-  ".yaml", ".yml", ".css", ".js", ".json", ".txt", ".conf", ".md", ".toml", ".ini",
+  ".yaml",
+  ".yml",
+  ".css",
+  ".js",
+  ".json",
+  ".txt",
+  ".conf",
+  ".md",
+  ".toml",
+  ".ini",
 ]);
-const BACKUP_BIN_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp"]);
+const BACKUP_BIN_EXT = new Set([
+  ".png",
+  ".jpg",
+  ".jpeg",
+  ".gif",
+  ".webp",
+  ".svg",
+  ".ico",
+  ".bmp",
+]);
 
 // Only accept plain filenames with a known extension; reject path traversal
 // and dotfiles (so .bak/.tmp/.env/.DS_Store never leak in or get written).
@@ -583,7 +708,10 @@ export async function readAllConfigs() {
 // ({ "bookmarks.yaml": "..." }) for backward compatibility.
 export async function writeAllConfigs(bundle) {
   const input =
-    bundle && bundle.files && typeof bundle.files === "object" && !Array.isArray(bundle.files)
+    bundle &&
+    bundle.files &&
+    typeof bundle.files === "object" &&
+    !Array.isArray(bundle.files)
       ? bundle.files
       : bundle; // legacy: the body itself is the files map
 

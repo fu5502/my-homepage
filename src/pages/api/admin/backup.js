@@ -4,7 +4,7 @@ function backupFilename(ts) {
   const d = new Date(ts);
   const p = (n) => String(n).padStart(2, "0");
   return `my-homepage-backup-${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(
-    d.getHours(),
+    d.getHours()
   )}${p(d.getMinutes())}${p(d.getSeconds())}.json`;
 }
 
@@ -14,7 +14,10 @@ export default async function handler(req, res) {
       const bundle = await readAllConfigs();
       const body = JSON.stringify(bundle, null, 2);
       res.setHeader("Content-Type", "application/json; charset=utf-8");
-      res.setHeader("Content-Disposition", `attachment; filename="${backupFilename(Date.now())}"`);
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${backupFilename(Date.now())}"`
+      );
       return res.status(200).send(body);
     }
 
@@ -24,11 +27,15 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "请求体必须是一个对象" });
       }
       const input =
-        body.files && typeof body.files === "object" && !Array.isArray(body.files)
+        body.files &&
+        typeof body.files === "object" &&
+        !Array.isArray(body.files)
           ? body.files
           : body;
       if (!input || typeof input !== "object" || Array.isArray(input)) {
-        return res.status(400).json({ error: "备份文件缺少 files 字段或格式不正确" });
+        return res
+          .status(400)
+          .json({ error: "备份文件缺少 files 字段或格式不正确" });
       }
       const result = await writeAllConfigs(body);
 
@@ -44,7 +51,10 @@ export default async function handler(req, res) {
 
       const names = Object.keys(input).filter((k) => {
         const v = input[k];
-        return typeof v === "string" || (v && typeof v === "object" && "content" in v);
+        return (
+          typeof v === "string" ||
+          (v && typeof v === "object" && "content" in v)
+        );
       });
       return res.status(200).json({
         written: result.written,
