@@ -38,9 +38,7 @@ export async function readBookmarksModel() {
       name: groupName,
       bookmarks: entries.map((entry) => {
         const bmName = Object.keys(entry)[0];
-        const fields = Array.isArray(entry[bmName])
-          ? entry[bmName][0] || {}
-          : {};
+        const fields = Array.isArray(entry[bmName]) ? entry[bmName][0] || {} : {};
         return { name: bmName, ...fields };
       }),
     };
@@ -85,14 +83,7 @@ export async function writeBookmarksModel(model) {
   await fs.rename(tmp, file);
 }
 
-export async function addBookmark({
-  group,
-  name,
-  abbr,
-  href,
-  icon,
-  description,
-}) {
+export async function addBookmark({ group, name, abbr, href, icon, description }) {
   const model = await readBookmarksModel();
   let g = model.find((x) => x.name === group);
   if (!g) {
@@ -107,16 +98,7 @@ export async function addBookmark({
   return model;
 }
 
-export async function updateBookmark({
-  oldGroup,
-  oldName,
-  group,
-  name,
-  abbr,
-  href,
-  icon,
-  description,
-}) {
+export async function updateBookmark({ oldGroup, oldName, group, name, abbr, href, icon, description }) {
   const model = await readBookmarksModel();
   const og = model.find((x) => x.name === oldGroup);
   if (og) og.bookmarks = og.bookmarks.filter((b) => b.name !== oldName);
@@ -135,9 +117,7 @@ export async function deleteBookmark({ group, name }) {
   const model = await readBookmarksModel();
   const g = model.find((x) => x.name === group);
   if (g) g.bookmarks = g.bookmarks.filter((b) => b.name !== name);
-  const cleaned = model.filter((x) =>
-    x.name === group ? g && g.bookmarks.length > 0 : true,
-  );
+  const cleaned = model.filter((x) => (x.name === group ? g && g.bookmarks.length > 0 : true));
   await writeBookmarksModel(cleaned);
   return cleaned;
 }
@@ -184,13 +164,7 @@ function cleanServiceFields(fields) {
   const out = {};
   Object.entries(fields || {}).forEach(([k, v]) => {
     if (v === undefined || v === null || v === "") return;
-    if (
-      k === "widget" &&
-      v &&
-      typeof v === "object" &&
-      Object.keys(v).length === 0
-    )
-      return;
+    if (k === "widget" && v && typeof v === "object" && Object.keys(v).length === 0) return;
     if (k === "options" && Array.isArray(v) && v.length === 0) return;
     out[k] = v;
   });
@@ -223,10 +197,7 @@ export async function readServicesModel() {
       name: groupName,
       services: entries.map((entry) => {
         const svcName = Object.keys(entry)[0];
-        const fields =
-          entry[svcName] && typeof entry[svcName] === "object"
-            ? entry[svcName]
-            : {};
+        const fields = entry[svcName] && typeof entry[svcName] === "object" ? entry[svcName] : {};
         return { name: svcName, ...fields };
       }),
     };
@@ -348,9 +319,7 @@ export async function deleteService({ group, name }) {
   const model = await readServicesModel();
   const g = model.find((x) => x.name === group);
   if (g) g.services = g.services.filter((s) => s.name !== name);
-  const cleaned = model.filter((x) =>
-    x.name === group ? g && g.services.length > 0 : true,
-  );
+  const cleaned = model.filter((x) => (x.name === group ? g && g.services.length > 0 : true));
   await writeServicesModel(cleaned);
   return cleaned;
 }
@@ -387,9 +356,7 @@ export async function reorderServices({ group, order }) {
   if (!g) throw new Error(`Group "${group}" not found`);
 
   const byName = new Map(g.services.map((s) => [s.name, s]));
-  const next = order
-    .map((name) => byName.get(name))
-    .filter((s) => s !== undefined);
+  const next = order.map((name) => byName.get(name)).filter((s) => s !== undefined);
   g.services.forEach((s) => {
     if (!order.includes(s.name)) next.push(s);
   });
@@ -432,8 +399,7 @@ export async function readSiteModel() {
   } catch (e) {
     return { copyright: "", github: "" };
   }
-  if (!parsed || typeof parsed !== "object")
-    return { copyright: "", github: "" };
+  if (!parsed || typeof parsed !== "object") return { copyright: "", github: "" };
   return normalizeSite(parsed);
 }
 
@@ -557,15 +523,11 @@ function pruneEmpty(value) {
 // so an entry with no options still carries meaning and must not be pruned
 // away. Only the options inside each group get cleaned.
 function pruneLayout(layout) {
-  if (!layout || typeof layout !== "object" || Array.isArray(layout))
-    return undefined;
+  if (!layout || typeof layout !== "object" || Array.isArray(layout)) return undefined;
   const out = {};
   Object.entries(layout).forEach(([group, options]) => {
     if (!group) return;
-    out[group] =
-      options && typeof options === "object" && !Array.isArray(options)
-        ? pruneEmpty(options)
-        : {};
+    out[group] = options && typeof options === "object" && !Array.isArray(options) ? pruneEmpty(options) : {};
   });
   return Object.keys(out).length ? out : undefined;
 }
@@ -644,28 +606,8 @@ export async function writeSettingsModel(model) {
 // target host. Keep those in the target machine's own deployment config.
 // ---------------------------------------------------------------------------
 
-const BACKUP_TEXT_EXT = new Set([
-  ".yaml",
-  ".yml",
-  ".css",
-  ".js",
-  ".json",
-  ".txt",
-  ".conf",
-  ".md",
-  ".toml",
-  ".ini",
-]);
-const BACKUP_BIN_EXT = new Set([
-  ".png",
-  ".jpg",
-  ".jpeg",
-  ".gif",
-  ".webp",
-  ".svg",
-  ".ico",
-  ".bmp",
-]);
+const BACKUP_TEXT_EXT = new Set([".yaml", ".yml", ".css", ".js", ".json", ".txt", ".conf", ".md", ".toml", ".ini"]);
+const BACKUP_BIN_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg", ".ico", ".bmp"]);
 
 // Only accept plain filenames with a known extension; reject path traversal
 // and dotfiles (so .bak/.tmp/.env/.DS_Store never leak in or get written).
@@ -708,12 +650,7 @@ export async function readAllConfigs() {
 // ({ "bookmarks.yaml": "..." }) for backward compatibility.
 export async function writeAllConfigs(bundle) {
   const input =
-    bundle &&
-    bundle.files &&
-    typeof bundle.files === "object" &&
-    !Array.isArray(bundle.files)
-      ? bundle.files
-      : bundle; // legacy: the body itself is the files map
+    bundle && bundle.files && typeof bundle.files === "object" && !Array.isArray(bundle.files) ? bundle.files : bundle; // legacy: the body itself is the files map
 
   if (!input || typeof input !== "object" || Array.isArray(input)) {
     throw new Error("备份格式不正确");
@@ -725,9 +662,7 @@ export async function writeAllConfigs(bundle) {
     let buf;
     if (entry && typeof entry === "object" && "content" in entry) {
       buf =
-        entry.encoding === "base64"
-          ? Buffer.from(entry.content, "base64")
-          : Buffer.from(String(entry.content), "utf8");
+        entry.encoding === "base64" ? Buffer.from(entry.content, "base64") : Buffer.from(String(entry.content), "utf8");
     } else if (typeof entry === "string") {
       buf = Buffer.from(entry, "utf8");
     } else {
