@@ -22,18 +22,7 @@ vi.mock("utils/config/config", () => ({
   default: config.default,
 }));
 
-import {
-  addBookmark,
-  deleteBookmark,
-  readBookmarksModel,
-  reorderBookmarks,
-  updateBookmark,
-  addService,
-  deleteService,
-  readServicesModel,
-  reorderServices,
-  updateService,
-} from "./admin";
+import { reorderBookmarks, reorderServices, updateBookmark, updateService } from "./admin";
 
 describe("utils/config/admin", () => {
   beforeEach(() => {

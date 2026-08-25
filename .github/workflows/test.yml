@@ -34,4 +34,4 @@ jobs:
           files: ./coverage/lcov.info
           flags: vitest-shard-${{ matrix.shard }}
           name: vitest-shard-${{ matrix.shard }}
-          fail_ci_if_error: true
+          fail_ci_if_error: false

@@ -12,23 +12,21 @@ export default async function handler(req, res) {
       if (!group || !name || !href) {
         return res.status(400).json({ error: "group, name and href are required" });
       }
-      return res
-        .status(200)
-        .json(
-          await addService({
-            group,
-            name,
-            href,
-            icon,
-            description,
-            server,
-            container,
-            showStats,
-            ping,
-            widget,
-            options,
-          }),
-        );
+      return res.status(200).json(
+        await addService({
+          group,
+          name,
+          href,
+          icon,
+          description,
+          server,
+          container,
+          showStats,
+          ping,
+          widget,
+          options,
+        }),
+      );
     }
 
     if (req.method === "PUT") {
