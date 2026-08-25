@@ -1,4 +1,4 @@
-import { addBookmark, deleteBookmark, readBookmarksModel, updateBookmark } from "utils/config/admin";
+import { addBookmark, deleteBookmark, readBookmarksModel, reorderBookmarks, updateBookmark } from "utils/config/admin";
 
 export default async function handler(req, res) {
   try {
@@ -30,6 +30,14 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: "group and name are required" });
       }
       return res.status(200).json(await deleteBookmark({ group, name }));
+    }
+
+    if (req.method === "PATCH") {
+      const { group, order } = req.body || {};
+      if (!group || !Array.isArray(order)) {
+        return res.status(400).json({ error: "group and order[] are required" });
+      }
+      return res.status(200).json(await reorderBookmarks({ group, order }));
     }
 
     return res.status(405).json({ error: "Method not allowed" });

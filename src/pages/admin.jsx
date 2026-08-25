@@ -117,6 +117,67 @@ function BookmarksPanel() {
       return next;
     });
 
+  // 拖放排序状态：dragGroup 记录正在拖动的分类，dragIndex 记录源索引
+  const [dragGroup, setDragGroup] = useState(null);
+  const [dragIndex, setDragIndex] = useState(null);
+
+  const onDragStart = (e, groupName, index) => {
+    setDragGroup(groupName);
+    setDragIndex(index);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", String(index));
+  };
+  const onDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+  const onDrop = (e, groupName, dropIndex) => {
+    e.preventDefault();
+    const from = Number(e.dataTransfer.getData("text/plain"));
+    if (dragGroup !== groupName || Number.isNaN(from) || from === dropIndex) {
+      setDragGroup(null);
+      setDragIndex(null);
+      return;
+    }
+    reorderWithin(groupName, from, dropIndex);
+    setDragGroup(null);
+    setDragIndex(null);
+  };
+
+  const reorderWithin = (groupName, from, to) => {
+    const group = groups.find((g) => g.name === groupName);
+    if (!group) return;
+    const arr = [...group.bookmarks];
+    const [moved] = arr.splice(from, 1);
+    arr.splice(to, 0, moved);
+    setGroups((prev) => prev.map((g) => (g.name === groupName ? { ...g, bookmarks: arr } : g)));
+    saveBookmarkOrder(
+      groupName,
+      arr.map((b) => b.name),
+    );
+  };
+
+  const saveBookmarkOrder = async (groupName, order) => {
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch("/api/admin/bookmarks", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ group: groupName, order }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "排序保存失败");
+      }
+      setGroups(await res.json());
+      setNotice(`已保存「${groupName}」的链接顺序`);
+    } catch (e) {
+      setError(e.message);
+      load();
+    }
+  };
+
   const [form, setForm] = useState({
     group: "",
     name: "",
@@ -241,7 +302,8 @@ function BookmarksPanel() {
   return (
     <div className="space-y-6">
       <p className="text-sm opacity-60">
-        管理首页的快捷链接，按分类分组。点击分类标题可展开 / 收起，下方可新增或编辑链接。
+        管理首页的快捷链接，按分类分组。点击分类标题展开 /
+        收起；展开后拖动链接左侧手柄即可调整顺序，下方可新增或编辑链接。
       </p>
       {error && (
         <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-3 py-2 text-sm">
@@ -341,11 +403,26 @@ function BookmarksPanel() {
                 </div>
                 {open && (
                   <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-                    {g.bookmarks.map((bm) => (
-                      <li key={bm.name} className="py-2 flex items-center justify-between gap-2">
-                        <div className="min-w-0">
-                          <div className="font-medium truncate">{bm.name}</div>
-                          <div className="text-xs opacity-60 truncate">{bm.href}</div>
+                    {g.bookmarks.map((bm, i) => (
+                      <li
+                        key={bm.name}
+                        draggable
+                        onDragStart={(e) => onDragStart(e, g.name, i)}
+                        onDragOver={onDragOver}
+                        onDrop={(e) => onDrop(e, g.name, i)}
+                        className={`py-2 flex items-center justify-between gap-2 ${
+                          dragGroup === g.name && dragIndex === i ? "opacity-40" : ""
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <BiMoveVertical
+                            className="text-gray-400 dark:text-gray-500 cursor-grab active:cursor-grabbing shrink-0"
+                            title="拖动调整顺序"
+                          />
+                          <div className="min-w-0">
+                            <div className="font-medium truncate">{bm.name}</div>
+                            <div className="text-xs opacity-60 truncate">{bm.href}</div>
+                          </div>
                         </div>
                         <div className="flex gap-3 shrink-0 items-center">
                           <button

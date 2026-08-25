@@ -1,6 +1,8 @@
 import { promises as fs } from "fs";
 import path from "path";
+
 import yaml from "js-yaml";
+
 import checkAndCopyConfig, { CONF_DIR } from "utils/config/config";
 
 const BOOKMARKS_FILE = "bookmarks.yaml";
@@ -100,15 +102,32 @@ export async function addBookmark({ group, name, abbr, href, icon, description }
 
 export async function updateBookmark({ oldGroup, oldName, group, name, abbr, href, icon, description }) {
   const model = await readBookmarksModel();
-  const og = model.find((x) => x.name === oldGroup);
-  if (og) og.bookmarks = og.bookmarks.filter((b) => b.name !== oldName);
+  const nextBookmark = cleanFields({ name, abbr, href, icon, description });
 
-  let g = model.find((x) => x.name === group);
-  if (!g) {
-    g = { name: group, bookmarks: [] };
-    model.push(g);
+  if (oldGroup === group) {
+    let g = model.find((x) => x.name === group);
+    if (!g) {
+      g = { name: group, bookmarks: [] };
+      model.push(g);
+    }
+    const idx = g.bookmarks.findIndex((b) => b.name === oldName);
+    if (idx !== -1) {
+      g.bookmarks[idx] = nextBookmark;
+    } else {
+      g.bookmarks.push(nextBookmark);
+    }
+  } else {
+    const og = model.find((x) => x.name === oldGroup);
+    if (og) og.bookmarks = og.bookmarks.filter((b) => b.name !== oldName);
+
+    let g = model.find((x) => x.name === group);
+    if (!g) {
+      g = { name: group, bookmarks: [] };
+      model.push(g);
+    }
+    g.bookmarks.push(nextBookmark);
   }
-  g.bookmarks.push(cleanFields({ name, abbr, href, icon, description }));
+
   await writeBookmarksModel(model);
   return model;
 }
@@ -140,6 +159,27 @@ export async function deleteGroup(name) {
   }
   await writeBookmarksModel(cleaned);
   return cleaned;
+}
+
+// Reorder the bookmarks inside one group. `order` is the full list of bookmark
+// names in their new order; any bookmark omitted from `order` is appended at
+// the end so a partial payload never drops data.
+export async function reorderBookmarks({ group, order }) {
+  if (!group || !Array.isArray(order)) {
+    throw new Error("group and order[] are required");
+  }
+  const model = await readBookmarksModel();
+  const g = model.find((x) => x.name === group);
+  if (!g) throw new Error(`Group "${group}" not found`);
+
+  const byName = new Map(g.bookmarks.map((b) => [b.name, b]));
+  const next = order.map((name) => byName.get(name)).filter((b) => b !== undefined);
+  g.bookmarks.forEach((b) => {
+    if (!order.includes(b.name)) next.push(b);
+  });
+  g.bookmarks = next;
+  await writeBookmarksModel(model);
+  return model;
 }
 
 // ---------------------------------------------------------------------------
@@ -289,28 +329,43 @@ export async function updateService({
   options,
 }) {
   const model = await readServicesModel();
-  const og = model.find((x) => x.name === oldGroup);
-  if (og) og.services = og.services.filter((s) => s.name !== oldName);
+  const nextService = cleanServiceFields({
+    name,
+    icon,
+    href,
+    description,
+    server,
+    container,
+    showStats,
+    ping,
+    widget,
+    options,
+  });
 
-  let g = model.find((x) => x.name === group);
-  if (!g) {
-    g = { name: group, services: [] };
-    model.push(g);
+  if (oldGroup === group) {
+    let g = model.find((x) => x.name === group);
+    if (!g) {
+      g = { name: group, services: [] };
+      model.push(g);
+    }
+    const idx = g.services.findIndex((s) => s.name === oldName);
+    if (idx !== -1) {
+      g.services[idx] = nextService;
+    } else {
+      g.services.push(nextService);
+    }
+  } else {
+    const og = model.find((x) => x.name === oldGroup);
+    if (og) og.services = og.services.filter((s) => s.name !== oldName);
+
+    let g = model.find((x) => x.name === group);
+    if (!g) {
+      g = { name: group, services: [] };
+      model.push(g);
+    }
+    g.services.push(nextService);
   }
-  g.services.push(
-    cleanServiceFields({
-      name,
-      icon,
-      href,
-      description,
-      server,
-      container,
-      showStats,
-      ping,
-      widget,
-      options,
-    }),
-  );
+
   await writeServicesModel(model);
   return model;
 }
