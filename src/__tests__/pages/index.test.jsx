@@ -283,9 +283,9 @@ describe("pages/index Wrapper", () => {
     expect(document.documentElement.classList.contains("theme-slate")).toBe(false);
 
     expect(document.querySelector("#background")).toBeTruthy();
-    expect(document.querySelector("#inner_wrapper")?.className).toContain("backdrop-blur");
-    expect(document.querySelector("#inner_wrapper")?.className).toContain("backdrop-saturate-150");
-    expect(document.querySelector("#inner_wrapper")?.className).toContain("backdrop-brightness-125");
+    expect(document.querySelector("#inner_wrapper")?.style.backdropFilter).toContain("blur");
+    expect(document.querySelector("#inner_wrapper")?.style.backdropFilter).toContain("saturate(150%)");
+    expect(document.querySelector("#inner_wrapper")?.style.backdropFilter).toContain("brightness(125%)");
   });
 
   it("supports legacy string backgrounds in settings", async () => {
