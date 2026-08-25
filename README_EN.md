@@ -16,51 +16,123 @@
 
 ---
 
-## 🚀 Quick Start (Docker / FnOS NAS recommended)
+## 🐳 Docker Compose Deployment (Recommended)
 
-The image is already built at `ghcr.io/fu5502/my-homepage:latest`. On a FnOS NAS (or any machine with Docker):
+Prebuilt multi-arch images (`linux/amd64` and `linux/arm64`) are hosted on GitHub Container Registry (GHCR), ready for one-click deployment on FnOS NAS, Synology DSM, Linux servers, etc.
+
+### Option 1: Quick Start via Git Clone
+
+If you have cloned this repository to your local machine or NAS:
 
 ```bash
-# 1. Pull the image (public repo, no login needed)
-docker pull ghcr.io/fu5502/my-homepage:latest
+git clone https://github.com/fu5502/my-homepage.git
+cd my-homepage
 
-# 2. Prepare a config directory with settings.yaml (see "Enable Auth" below)
+# 1. Copy the environment configuration template
+cp .env.example .env
+
+# 2. Edit .env with your own password and access URL
+nano .env
+
+# 3. Start the container
+docker compose up -d
+```
+
+---
+
+### Option 2: Lightweight Deployment in a Standalone Directory
+
+If you do not need the full source code, simply create a directory (e.g. `/opt/homepage` or `/vol1/1000/docker/homepage`) and add the following two files:
+
+#### 1. Create `docker-compose.yml`
+
+```yaml
+services:
+  homepage:
+    image: ghcr.io/fu5502/my-homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "${HOMEPAGE_PORT:-3000}:3000"
+    volumes:
+      - ./config:/config
+    environment:
+      # ===== Authentication (Password method) =====
+      - HOMEPAGE_AUTH_ENABLED=${HOMEPAGE_AUTH_ENABLED:-true}
+      - HOMEPAGE_AUTH_PASSWORD=${HOMEPAGE_AUTH_PASSWORD:?Please set HOMEPAGE_AUTH_PASSWORD in .env}
+      - HOMEPAGE_AUTH_SECRET=${HOMEPAGE_AUTH_SECRET:?Please set HOMEPAGE_AUTH_SECRET in .env}
+      - HOMEPAGE_EXTERNAL_URL=${HOMEPAGE_EXTERNAL_URL:?Please set HOMEPAGE_EXTERNAL_URL in .env}
+      # ===== Permissions and Networking =====
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - HOSTNAME=0.0.0.0
+      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS:-localhost:3000}
+```
+
+#### 2. Create `.env`
+
+```bash
+# Enable login authentication
+HOMEPAGE_AUTH_ENABLED=true
+
+# Login password (single global password; the login page only requires password, no username)
+HOMEPAGE_AUTH_PASSWORD=change-me-please
+
+# Session secret (random string; generate via: openssl rand -base64 32)
+HOMEPAGE_AUTH_SECRET=change-me-random-string
+
+# Public base URL (required by next-auth, replace with your NAS IP or domain)
+HOMEPAGE_EXTERNAL_URL=http://192.168.1.100:3000
+
+# Host validation whitelist (comma-separated; must include your access URL with port)
+HOMEPAGE_ALLOWED_HOSTS=192.168.1.100:3000,localhost:3000
+
+# Host port mapping (default: 3000)
+HOMEPAGE_PORT=3000
+
+# Container runtime UID and GID (defaults to 1000 for standard NAS users)
+PUID=1000
+PGID=1000
+```
+
+#### 3. Start and Access
+
+```bash
+# Create persistent config directory
 mkdir -p ./config
 
-# 3. Start with the repo's docker-compose.yml
-#    Put docker-compose.yml in a folder that contains ./config, then run:
+# Pull image and start
+docker compose pull
 docker compose up -d
 ```
 
-Then visit `http://<device-IP>:3000`.
+Visit `http://<device-IP>:3000` in your browser. After logging in, click the ⚙️ gear icon in the bottom-right corner to open the `/admin` visual dashboard.
 
-> If you've already `git clone`d this repo, just run `docker compose up -d` (the compose file already sets up the volume mount and `HOMEPAGE_AUTH_ENABLED=true`).
+---
 
-### Enable Auth (strongly recommended)
+### 🔄 Image Updates and Upgrades
 
-Both `/admin` and `api/admin/*` are protected by `HOMEPAGE_AUTH_ENABLED`. **Note: in this homepage version, password login is driven by environment variables, NOT the `auth.users` block in `settings.yaml`.** The following 4 variables must all be present for next-auth to register the "Password" provider:
-
-| Variable                     | Purpose                                                                                          |
-| ---------------------------- | ------------------------------------------------------------------------------------------------ |
-| `HOMEPAGE_AUTH_ENABLED=true` | enable auth                                                                                      |
-| `HOMEPAGE_AUTH_PASSWORD`     | login password (single global password — the sign-in page only asks for a password, no username) |
-| `HOMEPAGE_AUTH_SECRET`       | session secret (random string; changing it invalidates existing sessions)                        |
-| `HOMEPAGE_EXTERNAL_URL`      | public base URL, required by next-auth, e.g. `http://192.168.1.100:3000`                         |
-
-These variables come from a `.env` file in the repository root (**gitignored, never committed**). First-time setup:
+Whenever this repository is updated, GHCR automatically builds the latest image. In the directory containing your `docker-compose.yml`, run:
 
 ```bash
-cp .env.example .env   # then edit .env with your own password and base URL
+docker compose pull
 docker compose up -d
 ```
 
-Generate `HOMEPAGE_AUTH_SECRET` with `openssl rand -base64 32`. When using `docker run`, pass the same variables as `-e` flags.
+---
 
-> ⚠️ Never put real passwords in `docker-compose.yml`, the README, or any file tracked by Git.
+### ⚠️ Environment Variables Reference
 
-For OIDC / header auth, see the [homepage docs](https://gethomepage.dev/configs/settings/#auth).
+| Variable                     | Purpose                                                                                             |
+| ---------------------------- | --------------------------------------------------------------------------------------------------- |
+| `HOMEPAGE_AUTH_ENABLED=true` | Enables authentication (protects `/admin` UI and API)                                               |
+| `HOMEPAGE_AUTH_PASSWORD`     | Login password (single global password)                                                             |
+| `HOMEPAGE_AUTH_SECRET`       | Session secret (random string; generate with `openssl rand -base64 32`)                             |
+| `HOMEPAGE_EXTERNAL_URL`      | Public access URL required by NextAuth (e.g. `http://192.168.1.100:3000`)                           |
+| `HOMEPAGE_ALLOWED_HOSTS`     | Host header whitelist (comma-separated; e.g. `192.168.1.100:3000,localhost:3000`)                   |
+| `PUID` / `PGID`              | File owner UID/GID (default `1000`) to ensure permissions match between mounted `./config` and host |
 
-After logging in, a ⚙️ gear icon appears at the bottom-right of the dashboard — click it to open `/admin`.
+> ⚠️ Note: Keep your password and secrets safe in `.env` and never commit real credentials to a public Git repository. For other auth methods (OIDC, header auth), see the [homepage documentation](https://gethomepage.dev/configs/settings/#auth).
 
 ---
 

@@ -16,51 +16,123 @@
 
 ---
 
-## 🚀 快速开始（推荐 Docker / 飞牛 NAS）
+## 🐳 Docker Compose 部署（推荐）
 
-本镜像已在 `ghcr.io/fu5502/my-homepage:latest` 自动构建。在飞牛 NAS（或任意装有 Docker 的机器）上：
+预构建多架构镜像（`linux/amd64` 与 `linux/arm64`）已托管在 GitHub Container Registry（GHCR），可在飞牛 NAS（FnOS）、Synology 群晖、Linux 服务器等环境中一键部署。
+
+### 方式一：克隆仓库快速部署
+
+如果你已克隆本仓库到本地/NAS：
 
 ```bash
-# 1. 拉取镜像（公开仓库，无需登录）
-docker pull ghcr.io/fu5502/my-homepage:latest
+git clone https://github.com/fu5502/my-homepage.git
+cd my-homepage
 
-# 2. 准备好配置目录并放入 settings.yaml（见下方「开启登录」）
+# 1. 复制环境变量配置文件
+cp .env.example .env
+
+# 2. 编辑 .env，填入你的密码与访问地址（必填）
+nano .env
+
+# 3. 启动容器
+docker compose up -d
+```
+
+---
+
+### 方式二：独立目录轻量部署（无需克隆仓库）
+
+如果不需要拉取完整源码，只需在一个空目录（如 `/vol1/1000/docker/homepage`）下创建以下两个文件即可：
+
+#### 1. 创建 `docker-compose.yml`
+
+```yaml
+services:
+  homepage:
+    image: ghcr.io/fu5502/my-homepage:latest
+    container_name: homepage
+    restart: unless-stopped
+    ports:
+      - "${HOMEPAGE_PORT:-3000}:3000"
+    volumes:
+      - ./config:/config
+    environment:
+      # ===== 登录鉴权（密码方式）=====
+      - HOMEPAGE_AUTH_ENABLED=${HOMEPAGE_AUTH_ENABLED:-true}
+      - HOMEPAGE_AUTH_PASSWORD=${HOMEPAGE_AUTH_PASSWORD:?请先在 .env 中设置 HOMEPAGE_AUTH_PASSWORD}
+      - HOMEPAGE_AUTH_SECRET=${HOMEPAGE_AUTH_SECRET:?请先在 .env 中设置 HOMEPAGE_AUTH_SECRET}
+      - HOMEPAGE_EXTERNAL_URL=${HOMEPAGE_EXTERNAL_URL:?请先在 .env 中设置 HOMEPAGE_EXTERNAL_URL}
+      # ===== 运行权限与网络 =====
+      - PUID=${PUID:-1000}
+      - PGID=${PGID:-1000}
+      - HOSTNAME=0.0.0.0
+      - HOMEPAGE_ALLOWED_HOSTS=${HOMEPAGE_ALLOWED_HOSTS:-localhost:3000}
+```
+
+#### 2. 创建 `.env` 环境变量配置文件
+
+```bash
+# 开启登录鉴权
+HOMEPAGE_AUTH_ENABLED=true
+
+# 登录密码（单一全局密码，登录页只填密码、无需用户名）
+HOMEPAGE_AUTH_PASSWORD=change-me-please
+
+# 会话密钥（随机字符串，可通过命令生成：openssl rand -base64 32）
+HOMEPAGE_AUTH_SECRET=change-me-random-string
+
+# 外部访问完整地址（必填，请替换为你的 NAS IP 或域名，带端口）
+HOMEPAGE_EXTERNAL_URL=http://192.168.1.100:3000
+
+# Host 校验白名单（逗号分隔，必须包含上面填写的访问地址与端口）
+HOMEPAGE_ALLOWED_HOSTS=192.168.1.100:3000,localhost:3000
+
+# 宿主机映射端口（可按需修改，如 3000 或 8080）
+HOMEPAGE_PORT=3000
+
+# 容器内运行用户 ID 与组 ID（飞牛 NAS 默认首个用户通常为 1000）
+PUID=1000
+PGID=1000
+```
+
+#### 3. 启动并访问
+
+```bash
+# 创建配置持久化目录
 mkdir -p ./config
 
-# 3. 用仓库里的 docker-compose.yml 启动
-#    把本仓库的 docker-compose.yml 放到包含 ./config 的目录，进入该目录执行：
+# 拉取镜像并启动
+docker compose pull
 docker compose up -d
 ```
 
-启动后访问 `http://<设备IP>:3000`。
+启动后在浏览器访问 `http://<设备IP>:3000` 即可使用。登录后首页右下角会出现 ⚙️ 齿轮图标，点击即可进入 `/admin` 可视化后台管理。
 
-> 如果你已经 `git clone` 了本仓库，直接 `docker compose up -d` 即可（compose 已配好挂载与 `HOMEPAGE_AUTH_ENABLED=true`）。
+---
 
-### 开启登录（强烈建议）
+### 🔄 镜像更新与升级
 
-后台管理 `/admin` 与 `api/admin/*` 默认被 `HOMEPAGE_AUTH_ENABLED` 保护。**注意：本版本 homepage 的密码登录走环境变量，而不是 `settings.yaml` 的 `auth.users`**，必须同时具备以下 4 个环境变量，next-auth 才会注册「密码」登录方式：
-
-| 变量                         | 作用                                                           |
-| ---------------------------- | -------------------------------------------------------------- |
-| `HOMEPAGE_AUTH_ENABLED=true` | 开启鉴权                                                       |
-| `HOMEPAGE_AUTH_PASSWORD`     | 登录密码（单一全局密码，登录页只填密码、无需用户名）           |
-| `HOMEPAGE_AUTH_SECRET`       | 会话密钥（随机串，改了会让已登录会话失效）                     |
-| `HOMEPAGE_EXTERNAL_URL`      | 外部访问地址，next-auth 必填，例如 `http://192.168.1.100:3000` |
-
-这些变量由仓库根目录的 `.env` 提供（**已被 .gitignore 排除，不会提交到 Git**）。首次部署：
+当代码仓库更新后，GHCR 会自动构建最新镜像。在 `docker-compose.yml` 所在目录执行以下命令即可一键平滑升级：
 
 ```bash
-cp .env.example .env   # 然后编辑 .env，填入自己的密码与访问地址
+docker compose pull
 docker compose up -d
 ```
 
-`HOMEPAGE_AUTH_SECRET` 可用 `openssl rand -base64 32` 生成。若用 `docker run`，请自行把这些变量补成 `-e` 参数。
+---
 
-> ⚠️ 切勿把真实密码写进 `docker-compose.yml`、README 或任何会提交到 Git 的文件。
+### ⚠️ 环境变量说明与注意事项
 
-OIDC / Header 等其他鉴权方式见 [homepage 官方文档](https://gethomepage.dev/configs/settings/#auth)。
+| 变量                         | 说明                                                                                        |
+| ---------------------------- | ------------------------------------------------------------------------------------------- |
+| `HOMEPAGE_AUTH_ENABLED=true` | 开启登录鉴权（保护 `/admin` 后台与接口）                                                    |
+| `HOMEPAGE_AUTH_PASSWORD`     | 登录密码（单一全局密码，登录页仅需输入密码，无需用户名）                                    |
+| `HOMEPAGE_AUTH_SECRET`       | 会话密钥（随机串，可用 `openssl rand -base64 32` 生成）                                     |
+| `HOMEPAGE_EXTERNAL_URL`      | 外部访问完整 URL（NextAuth 必填，例如 `http://192.168.1.100:3000`）                         |
+| `HOMEPAGE_ALLOWED_HOSTS`     | Host 校验白名单（逗号分隔，如 `192.168.1.100:3000,localhost:3000`，不匹配会提示 Host 错误） |
+| `PUID` / `PGID`              | 容器内文件所有者 ID（默认 `1000`），确保挂载的 `./config` 目录文件与 NAS 本地用户权限匹配   |
 
-登录后，首页右下角会出现一个⚙️齿轮图标，点击进入 `/admin` 即可管理。
+> ⚠️ 注意：密码等敏感信息请妥善保存在 `.env` 中，切勿将密码硬编码提交至公开 Git 仓库。其他鉴权方式（如 OIDC / Header）参见 [homepage 官方文档](https://gethomepage.dev/configs/settings/#auth)。
 
 ---
 
