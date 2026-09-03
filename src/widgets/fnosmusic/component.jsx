@@ -115,10 +115,10 @@ export default function Component({ service }) {
               </div>
 
               {/* 第二行：专属精准进度条（参考 Emby 规范） */}
-              <div className="relative mt-1 flex h-5 w-full items-center rounded-md bg-theme-200/50 text-theme-700 dark:bg-theme-900/20 dark:text-theme-200">
+              <div className="relative mt-1 flex h-5 w-full items-center overflow-hidden rounded-md bg-theme-200/60 text-theme-700 dark:bg-theme-900/30 dark:text-theme-200">
                 <div
-                  className={`absolute z-0 h-5 rounded-md transition-all duration-300 ease-linear ${
-                    isActivelyPlaying ? "bg-theme-500/35 dark:bg-theme-500/40" : "bg-theme-300/30 dark:bg-theme-700/30"
+                  className={`absolute left-0 top-0 z-0 h-full rounded-md transition-all duration-300 ease-linear ${
+                    isActivelyPlaying ? "bg-theme-500/70 dark:bg-theme-500/60" : "bg-theme-400/40 dark:bg-theme-600/40"
                   }`}
                   style={{
                     width: `${percent}%`,
@@ -132,7 +132,7 @@ export default function Component({ service }) {
                   )}
                 </div>
                 <div className="grow" />
-                <div className="z-10 mr-2 flex items-center font-mono text-[10px] opacity-90">
+                <div className="z-10 mr-2 flex items-center font-mono text-[10px] font-medium opacity-90">
                   {formatDuration(position)}
                   <span className="mx-0.5 text-[8px] opacity-60">/</span>
                   {formatDuration(nowPlaying.duration)}
@@ -141,10 +141,10 @@ export default function Component({ service }) {
             </>
           ) : (
             /* 单行紧凑模式 */
-            <div className="relative mt-1 flex h-5 w-full items-center rounded-md bg-theme-200/50 text-theme-700 dark:bg-theme-900/20 dark:text-theme-200">
+            <div className="relative mt-1 flex h-5 w-full items-center overflow-hidden rounded-md bg-theme-200/60 text-theme-700 dark:bg-theme-900/30 dark:text-theme-200">
               <div
-                className={`absolute z-0 h-5 rounded-md transition-all duration-300 ease-linear ${
-                  isActivelyPlaying ? "bg-theme-500/35 dark:bg-theme-500/40" : "bg-theme-300/30 dark:bg-theme-700/30"
+                className={`absolute left-0 top-0 z-0 h-full rounded-md transition-all duration-300 ease-linear ${
+                  isActivelyPlaying ? "bg-theme-500/70 dark:bg-theme-500/60" : "bg-theme-400/40 dark:bg-theme-600/40"
                 }`}
                 style={{
                   width: `${percent}%`,
