@@ -48,7 +48,7 @@ export default function Component({ service }) {
   const { t } = useTranslation();
   const { widget } = service;
   const { data, error } = useWidgetAPI(widget, "unified", {
-    refreshInterval: 10000,
+    refreshInterval: 5000,
   });
 
   const nowPlaying = data?.nowPlaying;
