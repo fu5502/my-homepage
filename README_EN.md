@@ -170,6 +170,8 @@ pnpm dev          # dev mode, visit http://localhost:3000
 > Note: This project runs on Next.js 16 + pnpm. If `pnpm install` complains about a missing `@swc/helpers`,
 > make sure `.npmrc`'s `shamefully-hoist=true` is in effect, or install with `--shamefully-hoist`.
 
+> 🤖 **AI Agent Guidelines**: If you or your AI agents (e.g. Cursor, Claude Code, Devin, Copilot) are continuing development on this project, please refer to [AGENTS.md](./AGENTS.md) for full architecture details, code maps, CI requirements, and gotchas.
+
 ---
 
 ## 🐳 Build Image From Source

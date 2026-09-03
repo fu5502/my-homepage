@@ -180,6 +180,8 @@ pnpm dev          # 开发模式，访问 http://localhost:3000
 > 注意：本项目运行在 Next.js 16 + pnpm 环境下，若 `pnpm install` 报 `@swc/helpers` 找不到，
 > 请确保 `.npmrc` 中的 `shamefully-hoist=true` 生效，或手动加 `--shamefully-hoist` 参数安装。
 
+> 🤖 **智能体协作指南**：如果你或你的 AI 智能体（如 Cursor, Claude Code, Devin, Copilot 等）需要继续对此项目进行二开，请参考 [AGENTS.md](./AGENTS.md)，内含详细代码地图、CI 规范与开发避坑提示。
+
 ---
 
 ## 🐳 从源码构建镜像
