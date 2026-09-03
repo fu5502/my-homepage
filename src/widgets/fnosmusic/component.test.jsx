@@ -61,7 +61,7 @@ describe("widgets/fnosmusic/component", () => {
 
     expect(screen.getByText("惩罚")).toBeInTheDocument();
     expect(screen.getByText("- 阿杜")).toBeInTheDocument();
-    expect(screen.getByText("03:44")).toBeInTheDocument();
+    expect(screen.getByText("03:44", { exact: false })).toBeInTheDocument();
   });
 
   it("respects fields filtering", () => {

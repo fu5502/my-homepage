@@ -85,6 +85,7 @@ describe("widgets/fnosmusic/proxy", () => {
             data: {
               list: [
                 {
+                  guid: "test-guid",
                   title: "惩罚",
                   artists: [{ name: "阿杜" }],
                   album: { name: "坚持到底" },
@@ -112,6 +113,7 @@ describe("widgets/fnosmusic/proxy", () => {
         artists: 242,
       },
       nowPlaying: {
+        guid: "test-guid",
         title: "惩罚",
         artist: "阿杜",
         album: "坚持到底",

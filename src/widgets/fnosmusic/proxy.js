@@ -83,6 +83,7 @@ export default async function fnosmusicProxyHandler(req, res) {
         : item.artist?.name || "";
 
       nowPlaying = {
+        guid: item.guid || "",
         title: item.title || "",
         artist: artistName,
         album: item.album?.name || "",
