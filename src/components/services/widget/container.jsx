@@ -11,6 +11,8 @@ const ALIASED_WIDGETS = {
   hoarder: "karakeep",
   jellyseerr: "seerr",
   overseerr: "seerr",
+  "fnos-music": "fnosmusic",
+  feiniumusic: "fnosmusic",
 };
 
 export default function Container({ error = false, children, service }) {
