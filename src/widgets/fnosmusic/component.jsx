@@ -22,12 +22,13 @@ function usePlaybackProgress(nowPlaying) {
       return;
     }
 
-    if (!nowPlaying.isPlaying && nowPlaying.elapsed >= nowPlaying.duration) {
-      setPosition(nowPlaying.duration);
+    const initialElapsed = typeof nowPlaying.elapsed === "number" ? nowPlaying.elapsed : 0;
+
+    if (!nowPlaying.isPlaying) {
+      setPosition(Math.min(initialElapsed, nowPlaying.duration));
       return;
     }
 
-    const initialElapsed = typeof nowPlaying.elapsed === "number" ? nowPlaying.elapsed : 0;
     const receivedAt = Date.now();
 
     const update = () => {
