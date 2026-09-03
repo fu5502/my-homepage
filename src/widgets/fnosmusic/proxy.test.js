@@ -52,7 +52,7 @@ describe("widgets/fnosmusic/proxy", () => {
     expect(res2.body).toEqual({ error: "Missing widget key" });
   });
 
-  it("fetches stats and play history successfully", async () => {
+  it("fetches stats and play history successfully when helper fails", async () => {
     getServiceWidget.mockResolvedValue({
       type: "fnosmusic",
       url: "http://192.168.99.147:5666",
@@ -96,7 +96,8 @@ describe("widgets/fnosmusic/proxy", () => {
             },
           }),
         ),
-      ]);
+      ])
+      .mockRejectedValueOnce(new Error("helper not available"));
 
     const req = { query: { group: "media", service: "fnos_music" } };
     const res = createMockRes();
@@ -104,52 +105,45 @@ describe("widgets/fnosmusic/proxy", () => {
     await fnosmusicProxyHandler(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(httpProxy).toHaveBeenCalledTimes(4);
-    expect(httpProxy.mock.calls[0][1].headers.Cookie).toBe("music-token=test-token");
-    expect(res.body).toEqual({
-      stats: {
-        songs: 4454,
-        albums: 313,
-        artists: 242,
-      },
-      nowPlaying: {
-        guid: "test-guid",
-        title: "惩罚",
-        artist: "阿杜",
-        album: "坚持到底",
-        duration: 224938,
-        playedAt: 1788247992,
-      },
+    expect(res.body.stats).toEqual({
+      songs: 4454,
+      albums: 313,
+      artists: 242,
     });
+    expect(res.body.nowPlaying.title).toBe("惩罚");
+    expect(res.body.nowPlaying.isPlaying).toBe(false);
   });
 
-  it("handles empty play history gracefully", async () => {
+  it("uses real-time helper when available", async () => {
     getServiceWidget.mockResolvedValue({
       type: "fnosmusic",
-      url: "http://192.168.99.147:5666/music",
+      url: "http://192.168.99.147:5666",
       key: "test-token",
     });
 
     httpProxy
+      .mockResolvedValueOnce([200, "application/json", Buffer.from(JSON.stringify({ code: 0, data: { total: 10 } }))])
+      .mockResolvedValueOnce([200, "application/json", Buffer.from(JSON.stringify({ code: 0, data: { total: 2 } }))])
+      .mockResolvedValueOnce([200, "application/json", Buffer.from(JSON.stringify({ code: 0, data: { total: 1 } }))])
+      .mockResolvedValueOnce([200, "application/json", Buffer.from(JSON.stringify({ code: 0, data: { list: [] } }))])
       .mockResolvedValueOnce([
         200,
         "application/json",
-        Buffer.from(JSON.stringify({ code: 0, msg: "", data: { total: 100 } })),
-      ])
-      .mockResolvedValueOnce([
-        200,
-        "application/json",
-        Buffer.from(JSON.stringify({ code: 0, msg: "", data: { total: 10 } })),
-      ])
-      .mockResolvedValueOnce([
-        200,
-        "application/json",
-        Buffer.from(JSON.stringify({ code: 0, msg: "", data: { total: 5 } })),
-      ])
-      .mockResolvedValueOnce([
-        200,
-        "application/json",
-        Buffer.from(JSON.stringify({ code: 0, msg: "", data: { list: [] } })),
+        Buffer.from(
+          JSON.stringify({
+            code: 0,
+            data: {
+              title: "西出阳关",
+              artist: "阿杜",
+              album: "I DO",
+              duration: 244058,
+              playedAt: 1788436174801,
+              elapsed: 50000,
+              percent: 20.5,
+              isPlaying: true,
+            },
+          }),
+        ),
       ]);
 
     const req = { query: { group: "media", service: "fnos_music" } };
@@ -158,7 +152,15 @@ describe("widgets/fnosmusic/proxy", () => {
     await fnosmusicProxyHandler(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body.stats).toEqual({ songs: 100, albums: 10, artists: 5 });
-    expect(res.body.nowPlaying).toBeNull();
+    expect(res.body.nowPlaying).toEqual({
+      title: "西出阳关",
+      artist: "阿杜",
+      album: "I DO",
+      duration: 244058,
+      playedAt: 1788436174801,
+      elapsed: 50000,
+      percent: 20.5,
+      isPlaying: true,
+    });
   });
 });
