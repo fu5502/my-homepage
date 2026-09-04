@@ -32,14 +32,6 @@ export default async function fnosmusicProxyHandler(req, res) {
 
   const baseApiUrl = cleanUrl.endsWith("/music") ? `${cleanUrl}/api/v1` : `${cleanUrl}/music/api/v1`;
 
-  let helperUrl = null;
-  try {
-    const parsed = new URL(cleanUrl);
-    helperUrl = `${parsed.protocol}//${parsed.hostname}:5669/now-playing`;
-  } catch {
-    // ignore
-  }
-
   const headers = {
     "content-type": "application/json",
     Cookie: `music-token=${widget.key}`,
@@ -59,21 +51,12 @@ export default async function fnosmusicProxyHandler(req, res) {
     return json.data;
   }
 
-  async function fetchNowPlayingHelper() {
-    if (!helperUrl) return null;
-    const [status, , data] = await httpProxy(new URL(helperUrl), { timeout: 2000 });
-    if (status !== 200) return null;
-    const json = JSON.parse(Buffer.from(data).toString());
-    return json.code === 0 ? json.data : null;
-  }
-
   try {
-    const [tracksResult, albumsResult, artistsResult, playHistoryResult, helperResult] = await Promise.allSettled([
+    const [tracksResult, albumsResult, artistsResult, playHistoryResult] = await Promise.allSettled([
       fetchEndpoint(`${baseApiUrl}/track/list?page=1&pageSize=1`),
       fetchEndpoint(`${baseApiUrl}/album/list?page=1&pageSize=1`),
       fetchEndpoint(`${baseApiUrl}/artist/list?page=1&pageSize=1`),
       fetchEndpoint(`${baseApiUrl}/play-history/list?page=1&pageSize=1`),
-      fetchNowPlayingHelper(),
     ]);
 
     const statsFailCount = [tracksResult, albumsResult, artistsResult].filter((r) => r.status === "rejected").length;
@@ -90,9 +73,7 @@ export default async function fnosmusicProxyHandler(req, res) {
     };
 
     let nowPlaying = null;
-    if (helperResult.status === "fulfilled" && helperResult.value) {
-      nowPlaying = helperResult.value;
-    } else if (playHistoryResult.status === "fulfilled" && playHistoryResult.value?.list?.length > 0) {
+    if (playHistoryResult.status === "fulfilled" && playHistoryResult.value?.list?.length > 0) {
       const item = playHistoryResult.value.list[0];
       const artistName = Array.isArray(item.artists)
         ? item.artists
@@ -102,15 +83,10 @@ export default async function fnosmusicProxyHandler(req, res) {
         : item.artist?.name || "";
 
       nowPlaying = {
-        guid: item.guid || "",
         title: item.title || "",
         artist: artistName,
         album: item.album?.name || "",
         duration: item.duration || 0,
-        playedAt: item.updatedAt || item.createdAt || null,
-        elapsed: 0,
-        percent: 0,
-        isPlaying: false,
       };
     }
 
