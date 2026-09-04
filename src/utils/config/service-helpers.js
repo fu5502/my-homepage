@@ -355,6 +355,9 @@ export function cleanServiceGroups(groups) {
           // jellystat
           days,
 
+          // komari
+          nodeId,
+
           // komodo
           showSummary,
           showStacks,
@@ -567,6 +570,9 @@ export function cleanServiceGroups(groups) {
         }
         if (type === "gamedig") {
           if (gameToken) widget.gameToken = gameToken;
+        }
+        if (type === "komari") {
+          if (nodeId) widget.nodeId = nodeId;
         }
         if (type === "kopia") {
           if (snapshotHost) widget.snapshotHost = snapshotHost;

@@ -19,8 +19,9 @@ const { state, fs, yaml, config, Docker, dockerCfg, kubeCfg, kubeApi } = vi.hois
 
   const fs = {
     readFile: vi.fn(async (filePath) => {
-      if (String(filePath).endsWith("/services.yaml")) return "services";
-      if (String(filePath).endsWith("/docker.yaml")) return "docker";
+      const normalized = String(filePath).replace(/\\/g, "/");
+      if (normalized.endsWith("/services.yaml")) return "services";
+      if (normalized.endsWith("/docker.yaml")) return "docker";
       return "";
     }),
   };
@@ -272,6 +273,7 @@ describe("utils/config/service-helpers", () => {
               { type: "unifi", site: "Home" },
               { type: "proxmox", node: "pve" },
               { type: "proxmoxbackupserver", datastore: "ds" },
+              { type: "komari", nodeId: "node-1" },
               { type: "komodo", showSummary: "true", showStacks: "false" },
               { type: "kubernetes", namespace: "default", app: "app", podSelector: "app=test" },
               {
@@ -349,6 +351,7 @@ describe("utils/config/service-helpers", () => {
     expect(widgets.find((w) => w.type === "docker")).toEqual(
       expect.objectContaining({ server: "docker-local", container: "c1" }),
     );
+    expect(widgets.find((w) => w.type === "komari")).toEqual(expect.objectContaining({ nodeId: "node-1" }));
     expect(widgets.find((w) => w.type === "komodo")).toEqual(
       expect.objectContaining({ showSummary: true, showStacks: false }),
     );

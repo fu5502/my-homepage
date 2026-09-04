@@ -1134,6 +1134,21 @@
     "serviceErrors": "Service issues",
     "hostErrors": "Host issues"
   },
+  "komari": {
+    "name": "节点名称",
+    "status": "状态",
+    "online": "在线",
+    "offline": "离线",
+    "nodes": "总节点",
+    "cores": "总核心",
+    "cpu": "CPU",
+    "memory": "内存",
+    "disk": "磁盘",
+    "network": "网络速率",
+    "network_up": "上行速率",
+    "network_down": "下行速率",
+    "uptime": "运行时间"
+  },
   "komodo": {
     "total": "总计",
     "running": "运行中",

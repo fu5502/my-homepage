@@ -1159,6 +1159,21 @@
     "serviceErrors": "Service issues",
     "hostErrors": "Host issues"
   },
+  "komari": {
+    "name": "Name",
+    "status": "Status",
+    "online": "Online",
+    "offline": "Offline",
+    "nodes": "Nodes",
+    "cores": "Cores",
+    "cpu": "CPU",
+    "memory": "MEM",
+    "disk": "Disk",
+    "network": "NET",
+    "network_up": "Upload",
+    "network_down": "Download",
+    "uptime": "Uptime"
+  },
   "komodo": {
     "total": "Total",
     "running": "Running",

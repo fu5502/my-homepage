@@ -71,6 +71,7 @@ You can also find a list of all available service widgets in the sidebar navigat
 - [Jellystat](jellystat.md)
 - [Kavita](kavita.md)
 - [Komga](komga.md)
+- [Komari](komari.md)
 - [Komodo](komodo.md)
 - [Kopia](kopia.md)
 - [Lidarr](lidarr.md)
