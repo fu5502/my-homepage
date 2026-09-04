@@ -199,6 +199,8 @@ describe("utils/config/service-helpers", () => {
           {
             name: "svc3",
             weight: "7",
+            ping: "192.168.1.100",
+            siteMonitor: "http://192.168.1.100:8080",
             widget: { type: "frigate", enableRecentEvents: true },
           },
         ],
@@ -248,6 +250,8 @@ describe("utils/config/service-helpers", () => {
 
     const svc3 = cleaned[0].services[2];
     expect(svc3.weight).toBe(7);
+    expect(svc3.ping).toBe(true);
+    expect(svc3.siteMonitor).toBe(true);
     expect(svc3.widgets[0]).toEqual(expect.objectContaining({ type: "frigate", enableRecentEvents: true }));
 
     expect(state.logger.error).toHaveBeenCalled();
